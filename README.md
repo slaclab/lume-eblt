@@ -1,2 +1,2 @@
-# lume-elbt
-Tools for using ELBT in LUME
+# lume-eblt
+Tools for using EBLT in LUME

@@ -1,17 +1,17 @@
-site_name: lume-elbt
-repo_url: https://github.com/slaclab/lume-elbt
-repo_name: slaclab/lume-elbt
+site_name: lume-eblt
+repo_url: https://github.com/slaclab/lume-eblt
+repo_name: slaclab/lume-eblt
 
 nav:
   - Home: index.md
   - Installation: installation.md
-  - elbt:
+  - eblt:
       - Examples:
-          - examples/elbt_example.ipynb
-          - examples/example_parse_elbt_lattice.ipynb
-          - examples/example_parsing_elbt_out.ipynb
-          - examples/example_parsing_elbt_field.ipynb
-      - API: api/elbt.md
+          - examples/eblt_example.ipynb
+          - examples/example_parse_eblt_lattice.ipynb
+          - examples/example_parsing_eblt_out.ipynb
+          - examples/example_parsing_eblt_field.ipynb
+      - API: api/eblt.md
 
 theme:
   icon:
@@ -54,8 +54,8 @@ extra:
   generator: false
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/slaclab/lume-elbt
-      name: lume-elbt
+      link: https://github.com/slaclab/lume-eblt
+      name: lume-eblt
 
 extra_css:
   - stylesheets/extra.css

@@ -19,10 +19,10 @@ dependencies = [
   # All core dependencies must be sourced from conda (conda-forge).
   # See ``environment.yml`` for further information.
 ]
-description = "Tools for using ELBT in LUME"
+description = "Tools for using EBLT in LUME"
 dynamic = [ "version" ]
 keywords = []
-name = "lume-elbt"
+name = "lume-eblt"
 readme = {file = "README.md", content-type = "text/markdown"}
 requires-python = ">=3.7"
 
@@ -41,7 +41,7 @@ doc = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/slaclab/lume-elbt"
+Homepage = "https://github.com/slaclab/lume-eblt"
 
 [options]
 zip_safe = false
@@ -49,7 +49,7 @@ include_package_data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = [ "elbt*", ]
+include = [ "eblt*", ]
 namespaces = false
 
 [project.license]
@@ -60,10 +60,10 @@ file = "LICENSE"
 # ignore = []
 
 [tool.pytest.ini_options]
-addopts = "--cov=elbt/"
+addopts = "--cov=eblt/"
 log_cli_level = "info"
 log_level = "debug"
-testpaths = ["elbt/tests"]
+testpaths = ["eblt/tests"]
 
 [tool.setuptools_scm]
-version_file = "elbt/_version.py"
+version_file = "eblt/_version.py"
