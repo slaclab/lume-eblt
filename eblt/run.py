@@ -71,7 +71,7 @@ def find_workdir():
 def _make_eblt_input():
     pass
 
-class Eblt(CommandWrapper):
+class EBLT(CommandWrapper):
     """
 
     """
