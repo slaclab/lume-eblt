@@ -1,4 +1,3 @@
-from genesis.version4.types import NDArray
 
 ## Custom Pydantic class to handle numpy ndarray
 ## Copied from https://github.com/slaclab/lume-genesis/blob/master/genesis/version4/types.py
