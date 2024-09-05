@@ -1,5 +1,3 @@
-from warnings import warn
-
 # from .run import EBLT Need to fix
 
 try:
@@ -11,4 +9,3 @@ __all__ = [
     "Eblt",
     "global_display_options",
 ]
-
