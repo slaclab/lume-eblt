@@ -8,7 +8,6 @@ nav:
   - eblt:
       - Examples:
           - examples/eblt_devel.ipynb
-      - API: api/eblt.md
 
 theme:
   icon:
