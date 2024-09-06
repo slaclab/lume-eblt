@@ -1,7 +1,6 @@
-
 ## Custom Pydantic class to handle numpy ndarray
 ## Copied from https://github.com/slaclab/lume-genesis/blob/master/genesis/version4/types.py
-#class _PydanticNDArray:
+# class _PydanticNDArray:
 #    @classmethod
 #    def __get_pydantic_core_schema__(
 #        cls,
@@ -35,4 +34,4 @@
 #        raise ValueError(f"No conversion from {value!r} to numpy ndarray")
 #
 ## Annotate numpy arrays to be handled by the custom class
-#NDArray = Annotated[np.ndarray, _PydanticNDArray]
+# NDArray = Annotated[np.ndarray, _PydanticNDArray]

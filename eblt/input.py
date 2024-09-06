@@ -39,28 +39,31 @@ class LatticeElement(BaseModel):
     V: List[float]
     name: Optional[str]
 
-    @model_validator(mode='before')
+    @model_validator(mode="before")
     def cast_to_int(cls, values):
-        if 'Bnseg' in values and values['Bnseg'] is not None:
-            values['Bnseg'] = int(values['Bnseg'])
-        if 'Bmpstp' in values and values['Bmpstp'] is not None:
-            values['Bmpstp'] = int(values['Bmpstp'])
+        if "Bnseg" in values and values["Bnseg"] is not None:
+            values["Bnseg"] = int(values["Bnseg"])
+        if "Bmpstp" in values and values["Bmpstp"] is not None:
+            values["Bmpstp"] = int(values["Bmpstp"])
         return values
-
 
 
 # Define specific lattice element classes with named parameters for V values
 class DriftTube(BaseModel):
     length: float = Field(..., description="Length of the drift tube (m)")
-    beam_radius: float = Field(..., description="Beam radius (m) used in longitudinal space-charge")
-    name: Optional[str] = Field(None, description="Optional name for the drift tube element")
+    beam_radius: float = Field(
+        ..., description="Beam radius (m) used in longitudinal space-charge"
+    )
+    name: Optional[str] = Field(
+        None, description="Optional name for the drift tube element"
+    )
 
     @classmethod
     def from_lattice_element(cls, lattice_element: LatticeElement):
         return cls(
             length=lattice_element.length,
             beam_radius=lattice_element.V[0],
-            name=lattice_element.name
+            name=lattice_element.name,
         )
 
     def to_lattice_element(self) -> LatticeElement:
@@ -70,16 +73,23 @@ class DriftTube(BaseModel):
             Bmpstp=1,
             Btype=0,
             V=[self.beam_radius],
-            name=self.name
+            name=self.name,
         )
 
 
 class Bend(BaseModel):
     length: float = Field(..., description="Length of the bend element (m)")
-    beam_radius: float = Field(..., description="Beam radius (m) used in longitudinal space-charge")
+    beam_radius: float = Field(
+        ..., description="Beam radius (m) used in longitudinal space-charge"
+    )
     angle: float = Field(..., description="Bending angle (radians)")
-    CSR_switch: Optional[float] = Field(None, description="Switch for CSR (1.01 -> IGF CSR including A and B, 2.01 -> IGF steady-state CSR, 0.0 -> no CSR)")
-    SC_switch: Optional[float] = Field(None, description="Switch for space charge (1 on, otherwise off)")
+    CSR_switch: Optional[float] = Field(
+        None,
+        description="Switch for CSR (1.01 -> IGF CSR including A and B, 2.01 -> IGF steady-state CSR, 0.0 -> no CSR)",
+    )
+    SC_switch: Optional[float] = Field(
+        None, description="Switch for space charge (1 on, otherwise off)"
+    )
     name: Optional[str] = Field(None, description="Optional name for the bend element")
 
     @classmethod
@@ -90,7 +100,7 @@ class Bend(BaseModel):
             angle=lattice_element.V[4],
             CSR_switch=lattice_element.V[6] if len(lattice_element.V) > 6 else None,
             SC_switch=lattice_element.V[7] if len(lattice_element.V) > 7 else None,
-            name=lattice_element.name
+            name=lattice_element.name,
         )
 
     def to_lattice_element(self) -> LatticeElement:
@@ -110,26 +120,34 @@ class Bend(BaseModel):
             V.append(self.SC_switch)
 
         return LatticeElement(
-            length=self.length,
-            Bnseg=1,
-            Bmpstp=1,
-            Btype=4,
-            V=V,
-            name=self.name
+            length=self.length, Bnseg=1, Bmpstp=1, Btype=4, V=V, name=self.name
         )
 
 
 class Chicane(BaseModel):
     length: float = Field(..., description="Length of the chicane element (m)")
-    beam_radius: float = Field(..., description="Beam radius (m) used in longitudinal space-charge")
-    drift_length: float = Field(..., description="Drift length between first and second bends (m)")
+    beam_radius: float = Field(
+        ..., description="Beam radius (m) used in longitudinal space-charge"
+    )
+    drift_length: float = Field(
+        ..., description="Drift length between first and second bends (m)"
+    )
     angle: float = Field(..., description="Bending angle (radians)")
     R56: Optional[float] = Field(None, description="Transfer matrix element R56 (m)")
     T566: Optional[float] = Field(None, description="Transfer matrix element T566 (m)")
-    U5666: Optional[float] = Field(None, description="Transfer matrix element U5666 (m)")
-    CSR_switch: Optional[float] = Field(None, description="Switch for CSR (1.01 -> IGF CSR including A and B, 2.01 -> IGF steady-state CSR, 0.0 -> no CSR)")
-    SC_switch: Optional[float] = Field(None, description="Switch for space charge (1 on, otherwise off)")
-    name: Optional[str] = Field(None, description="Optional name for the chicane element")
+    U5666: Optional[float] = Field(
+        None, description="Transfer matrix element U5666 (m)"
+    )
+    CSR_switch: Optional[float] = Field(
+        None,
+        description="Switch for CSR (1.01 -> IGF CSR including A and B, 2.01 -> IGF steady-state CSR, 0.0 -> no CSR)",
+    )
+    SC_switch: Optional[float] = Field(
+        None, description="Switch for space charge (1 on, otherwise off)"
+    )
+    name: Optional[str] = Field(
+        None, description="Optional name for the chicane element"
+    )
 
     @classmethod
     def from_lattice_element(cls, lattice_element: LatticeElement):
@@ -143,7 +161,7 @@ class Chicane(BaseModel):
             angle=lattice_element.V[5],
             CSR_switch=lattice_element.V[6] if len(lattice_element.V) > 6 else None,
             SC_switch=lattice_element.V[7] if len(lattice_element.V) > 7 else None,
-            name=lattice_element.name
+            name=lattice_element.name,
         )
 
     def to_lattice_element(self) -> LatticeElement:
@@ -153,7 +171,7 @@ class Chicane(BaseModel):
             self.R56 or 0,
             self.T566 or 0,
             self.U5666 or 0,
-            self.angle
+            self.angle,
         ]
 
         # Append CSR and SC switches
@@ -168,17 +186,21 @@ class Chicane(BaseModel):
             Bmpstp=1,  # Indicate chicane
             Btype=4,
             V=V,
-            name=self.name
+            name=self.name,
         )
 
 
 class RFCavity(BaseModel):
     length: float = Field(..., description="Length of the RF cavity element (m)")
-    beam_radius: float = Field(..., description="Beam radius (m) used in longitudinal space-charge")
+    beam_radius: float = Field(
+        ..., description="Beam radius (m) used in longitudinal space-charge"
+    )
     gradient: float = Field(..., description="Gradient of the RF cavity (MV/m)")
     frequency: float = Field(..., description="Frequency of the RF cavity (Hz)")
     phase_deg: float = Field(..., description="Phase of the RF cavity in degrees")
-    name: Optional[str] = Field(None, description="Optional name for the RF cavity element")
+    name: Optional[str] = Field(
+        None, description="Optional name for the RF cavity element"
+    )
 
     @classmethod
     def from_lattice_element(cls, lattice_element: LatticeElement):
@@ -188,7 +210,7 @@ class RFCavity(BaseModel):
             gradient=lattice_element.V[1],
             frequency=lattice_element.V[2],
             phase_deg=lattice_element.V[3],
-            name=lattice_element.name
+            name=lattice_element.name,
         )
 
     def to_lattice_element(self) -> LatticeElement:
@@ -198,14 +220,18 @@ class RFCavity(BaseModel):
             Bmpstp=1,
             Btype=103,
             V=[self.beam_radius, self.gradient, self.frequency, self.phase_deg],
-            name=self.name
+            name=self.name,
         )
 
 
 class WriteBeam(BaseModel):
-    iwrite: int = Field(None, description = "integer for fort.i, fort.i+1 to write files to")
-    sample: int = Field(1, description = "Stride for sampling particles. ")
-    name: Optional[str] = Field(None, description="Optional name for the write beam element")
+    iwrite: int = Field(
+        None, description="integer for fort.i, fort.i+1 to write files to"
+    )
+    sample: int = Field(1, description="Stride for sampling particles. ")
+    name: Optional[str] = Field(
+        None, description="Optional name for the write beam element"
+    )
 
     @classmethod
     def from_lattice_element(cls, lattice_element: LatticeElement):
@@ -222,20 +248,19 @@ class WriteBeam(BaseModel):
             Bmpstp=self.iwrite,
             Btype=-2,
             V=[self.sample],
-            name=self.name
+            name=self.name,
         )
 
 
 class ChangeEnergy(BaseModel):
     energy_increment: float = Field(..., description="Energy increment (eV)")
-    name: Optional[str] = Field(None, description="Optional name for the change energy element")
+    name: Optional[str] = Field(
+        None, description="Optional name for the change energy element"
+    )
 
     @classmethod
     def from_lattice_element(cls, lattice_element: LatticeElement):
-        return cls(
-            energy_increment=lattice_element.V[0],
-            name=lattice_element.name
-        )
+        return cls(energy_increment=lattice_element.V[0], name=lattice_element.name)
 
     def to_lattice_element(self) -> LatticeElement:
         return LatticeElement(
@@ -244,7 +269,7 @@ class ChangeEnergy(BaseModel):
             Bmpstp=1,
             Btype=-39,
             V=[self.energy_increment],
-            name=self.name
+            name=self.name,
         )
 
 
@@ -253,7 +278,9 @@ class Wakefield(BaseModel):
     multiplier: float = Field(..., description="Wakefield multiplier")
     wake_function_file_id: float = Field(..., description="Wake function file ID")
     switch: float = Field(..., description="Switch for wakefield (1 on, otherwise off)")
-    name: Optional[str] = Field(None, description="Optional name for the wakefield element")
+    name: Optional[str] = Field(
+        None, description="Optional name for the wakefield element"
+    )
 
     @classmethod
     def from_lattice_element(cls, lattice_element: LatticeElement):
@@ -262,7 +289,7 @@ class Wakefield(BaseModel):
             multiplier=lattice_element.V[0],
             wake_function_file_id=lattice_element.V[1],
             switch=lattice_element.V[2],
-            name=lattice_element.name
+            name=lattice_element.name,
         )
 
     def to_lattice_element(self) -> LatticeElement:
@@ -272,7 +299,7 @@ class Wakefield(BaseModel):
             Bmpstp=1,
             Btype=-41,
             V=[self.multiplier, self.wake_function_file_id, self.switch],
-            name=self.name
+            name=self.name,
         )
 
 
@@ -281,9 +308,7 @@ class Exit(BaseModel):
 
     @classmethod
     def from_lattice_element(cls, lattice_element: LatticeElement):
-        return cls(
-            name=lattice_element.name
-        )
+        return cls(name=lattice_element.name)
 
     def to_lattice_element(self) -> LatticeElement:
         return LatticeElement(
@@ -292,20 +317,28 @@ class Exit(BaseModel):
             Bmpstp=1,
             Btype=-99,
             V=[],
-            name=self.name
+            name=self.name,
         )
 
 
 # Define the main class for handling the input file
 class EBLTInput(BaseModel):
     parameters: Parameters = Field(..., description="Simulation parameters")
-    phase_space_coefficients: PhaseSpaceCoefficients = Field(..., description="Phase space coefficients")
-    current_coefficients: Icoefficients = Field(..., description="Current profile coefficients")
-    lattice_lines: List[Union[DriftTube, Bend, Chicane, RFCavity, WriteBeam, ChangeEnergy, Wakefield, Exit]] = Field(..., description="List of lattice elements")
+    phase_space_coefficients: PhaseSpaceCoefficients = Field(
+        ..., description="Phase space coefficients"
+    )
+    current_coefficients: Icoefficients = Field(
+        ..., description="Current profile coefficients"
+    )
+    lattice_lines: List[
+        Union[
+            DriftTube, Bend, Chicane, RFCavity, WriteBeam, ChangeEnergy, Wakefield, Exit
+        ]
+    ] = Field(..., description="List of lattice elements")
 
     @staticmethod
     def preprocess_line(line: str) -> str:
-        line = line.replace('d', 'e')  # Replace 'd' with 'e' in scientific notation
+        line = line.replace("d", "e")  # Replace 'd' with 'e' in scientific notation
         return line
 
     @staticmethod
@@ -317,14 +350,18 @@ class EBLTInput(BaseModel):
             return f"{value:.15g}"  # Uses general format with 15 significant digits
 
     @classmethod
-    def parse_lattice_element(cls, lattice_values: List[float], name: Optional[str]) -> Union[Bend, Chicane, DriftTube, RFCavity, WriteBeam, ChangeEnergy, Wakefield, Exit]:
+    def parse_lattice_element(
+        cls, lattice_values: List[float], name: Optional[str]
+    ) -> Union[
+        Bend, Chicane, DriftTube, RFCavity, WriteBeam, ChangeEnergy, Wakefield, Exit
+    ]:
         lattice_element = LatticeElement(
             length=lattice_values[0],
             Bnseg=lattice_values[1] if len(lattice_values) > 1 else None,
             Bmpstp=lattice_values[2] if len(lattice_values) > 2 else None,
             Btype=int(lattice_values[3]),
             V=lattice_values[4:],
-            name=name
+            name=name,
         )
 
         if lattice_element.Btype == 0:
@@ -348,26 +385,34 @@ class EBLTInput(BaseModel):
             raise ValueError(f"Unknown Btype: {lattice_element.Btype}")
 
     @classmethod
-    def parse_from_lines(cls, lines: List[str]) -> 'EBLTInput':
+    def parse_from_lines(cls, lines: List[str]) -> "EBLTInput":
         parameter_lines = []
         lattice_lines = []
 
         for i, line in enumerate(lines):
-            if not line.strip() or line.startswith('!'):
+            if not line.strip() or line.startswith("!"):
                 continue
 
             line = cls.preprocess_line(line)
-            main_part, _, comment = line.partition('/')
+            main_part, _, comment = line.partition("/")
             comment = comment.strip()
 
             if i < 4:  # First four lines are parameter lines
-                parameter_lines.append([float(num) if '.' in num or 'e' in num else int(num) for num in main_part.split()])
+                parameter_lines.append(
+                    [
+                        float(num) if "." in num or "e" in num else int(num)
+                        for num in main_part.split()
+                    ]
+                )
             else:  # The remaining lines are lattice lines
                 lattice_parts = main_part.split()
-                lattice_values = [float(num) if '.' in num or 'e' in num else int(num) for num in lattice_parts]
+                lattice_values = [
+                    float(num) if "." in num or "e" in num else int(num)
+                    for num in lattice_parts
+                ]
                 name = None
-                if 'name:' in comment:
-                    name_match = re.search(r'name:\s*(\w+)', comment)
+                if "name:" in comment:
+                    name_match = re.search(r"name:\s*(\w+)", comment)
                     if name_match:
                         name = name_match.group(1)
 
@@ -391,35 +436,48 @@ class EBLTInput(BaseModel):
         return cls(
             parameters=parameters,
             current_coefficients=Icoefficients(coefficients=parameter_lines[1]),
-            phase_space_coefficients=PhaseSpaceCoefficients(coefficients=parameter_lines[2]),
+            phase_space_coefficients=PhaseSpaceCoefficients(
+                coefficients=parameter_lines[2]
+            ),
             lattice_lines=lattice_lines,
         )
 
-
     def to_lines(self) -> List[str]:
         lines = []
-    
+
         # Parameter lines with labels
         params = self.parameters
         lines.append("! np nz zmin zmax flagfwd flagdist")
-        lines.append(f"{params.np} {params.nz} {self.format_value(params.zmin)} {self.format_value(params.zmax)} {params.flagfwd} {params.flagdist} /")
-    
+        lines.append(
+            f"{params.np} {params.nz} {self.format_value(params.zmin)} {self.format_value(params.zmax)} {params.flagfwd} {params.flagdist} /"
+        )
+
         lines.append("! a0 a1 a2 a3 a4 a5 a6 a7 a8 a9")
-        lines.append(' '.join(map(self.format_value, self.current_coefficients.coefficients)) + " /")
-    
+        lines.append(
+            " ".join(map(self.format_value, self.current_coefficients.coefficients))
+            + " /"
+        )
+
         lines.append("! b0 b1 b2 b3 b4 b5 b6 b7 b8 b9")
-        lines.append(' '.join(map(self.format_value, self.phase_space_coefficients.coefficients)) + " /")
-    
+        lines.append(
+            " ".join(map(self.format_value, self.phase_space_coefficients.coefficients))
+            + " /"
+        )
+
         lines.append("! Iavg Ek mass charge freq")
-        lines.append(f"{self.format_value(params.Iavg)} {self.format_value(params.Ek)} {self.format_value(params.mass)} {self.format_value(params.charge)} {self.format_value(params.freq)} /")
-    
+        lines.append(
+            f"{self.format_value(params.Iavg)} {self.format_value(params.Ek)} {self.format_value(params.mass)} {self.format_value(params.charge)} {self.format_value(params.freq)} /"
+        )
+
         # Lattice lines with customized labels
         for element in self.lattice_lines:
             lattice_element = element.to_lattice_element()
-            
+
             # Create the label line based on the element type and its attributes
             if isinstance(element, Bend):
-                label_line = "! length Bnseg Bmpstp Bend beam_radius angle CSR_switch SC_switch"
+                label_line = (
+                    "! length Bnseg Bmpstp Bend beam_radius angle CSR_switch SC_switch"
+                )
             elif isinstance(element, Chicane):
                 label_line = "! length Bnseg Bmpstp Chicane beam_radius drift_length R56 T566 U5666 angle CSR_switch SC_switch"
             elif isinstance(element, DriftTube):
@@ -436,38 +494,41 @@ class EBLTInput(BaseModel):
                 label_line = "! length Bnseg Bmpstp Exit"
             else:
                 label_line = "! length Bnseg Bmpstp Unknown"
-            
+
             if lattice_element.name:
                 label_line += " name"
-    
+
             lattice_str = f"{self.format_value(lattice_element.length)} {lattice_element.Bnseg} {lattice_element.Bmpstp} {lattice_element.Btype}"
             lattice_str += " " + " ".join(map(self.format_value, lattice_element.V))
             lattice_str += " /"
-            
+
             if lattice_element.name:
                 lattice_str += f" !name: {lattice_element.name}"
-    
+
             lines.append(label_line)
             lines.append(lattice_str.strip())
-    
+
         return lines
 
-
-    
-
     @classmethod
-    def from_file(cls, filename: str) -> 'EBLTInput':
-        with open(filename, 'r') as file:
+    def from_file(cls, filename: str) -> "EBLTInput":
+        with open(filename, "r") as file:
             lines = file.readlines()
         return cls.parse_from_lines(lines)
 
     def to_file(self, filename: str):
-        with open(filename, 'w') as file:
+        with open(filename, "w") as file:
             lines = self.to_lines()
             file.write("\n".join(lines) + "\n")
 
 
-def assign_names_to_elements(lattice_lines: List[Union[Bend, Chicane, DriftTube, RFCavity, WriteBeam, ChangeEnergy, Wakefield, Exit]]):
+def assign_names_to_elements(
+    lattice_lines: List[
+        Union[
+            Bend, Chicane, DriftTube, RFCavity, WriteBeam, ChangeEnergy, Wakefield, Exit
+        ]
+    ],
+):
     name_counters = {
         Bend: 1,
         Chicane: 1,
@@ -476,9 +537,9 @@ def assign_names_to_elements(lattice_lines: List[Union[Bend, Chicane, DriftTube,
         WriteBeam: 1,
         ChangeEnergy: 1,
         Wakefield: 1,
-        Exit: 1
+        Exit: 1,
     }
-    
+
     existing_names = set()
 
     for element in lattice_lines:
@@ -496,22 +557,21 @@ def assign_names_to_elements(lattice_lines: List[Union[Bend, Chicane, DriftTube,
             existing_names.add(element.name)
 
 
-
-
 def test_eblt_interface():
     input_lines = [
         "100 200 0.0d0 1.0d0 1 2 /",
         "1.0 0.1 0.01 0.001 /",
         "0.0 0.0 0.0 0.0 /",
         "0.13 9.27065e+07 511005 -1.0 1.3e+09 /",
-        "1.0 10 5 4 0.5 0.5 0.1 0.0 1.01 1 / !name: test"
+        "1.0 10 5 4 0.5 0.5 0.1 0.0 1.01 1 / !name: test",
     ]
 
     eblt_input = EBLTInput.parse_from_lines(input_lines)
     output_lines = eblt_input.to_lines()
     parsed_output = EBLTInput.parse_from_lines(output_lines)
 
-    assert parsed_output == eblt_input, "Test failed: Parsed output does not match the original input object."
+    assert (
+        parsed_output == eblt_input
+    ), "Test failed: Parsed output does not match the original input object."
 
     print("Test passed!")
-
