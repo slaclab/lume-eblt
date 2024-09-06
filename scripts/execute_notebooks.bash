@@ -7,7 +7,7 @@ cd "$REPO_ROOT/docs/examples/" || exit 1
 
 NOTEBOOKS=$(git ls-files "*.ipynb")
 
-SKIP_PATTERNS=("perlmutter" "fodo" "Example3")
+SKIP_PATTERNS=("devel")
 
 # Silence Jupyterlab warning
 export PYDEVD_DISABLE_FILE_VALIDATION=1
