@@ -3,7 +3,7 @@ set -e
 
 REPO_ROOT=$(git rev-parse --show-toplevel)
 
-cd "$REPO_ROOT/docs/examples/genesis4" || exit 1
+cd "$REPO_ROOT/docs/examples/" || exit 1
 
 NOTEBOOKS=$(git ls-files "*.ipynb")
 
