@@ -8,7 +8,7 @@ import shlex
 import shutil
 import traceback
 from time import monotonic
-from typing import Any, ClassVar, Dict, Optional, Sequence, Tuple, Union
+from typing import Any, ClassVar, Dict, Optional, Union
 
 import h5py
 import psutil
@@ -19,12 +19,12 @@ from pmd_beamphysics.units import pmd_unit
 from typing_extensions import override
 
 from .. import tools
-from ..errors import EbltRunFailure
+from ..errors import EBLTRunFailure
 from . import parsers
 from .field import FieldFile
-from .input import EbltInput, Lattice, MainInput
-from .output import EbltOutput, RunInfo
-from .particles import EbltParticleData
+from .input import EBLTInput, Lattice, MainInput
+from .output import EBLTOutput, RunInfo
+from .particles import EBLTParticleData
 from .types import AnyPath
 
 logger = logging.getLogger(__name__)
@@ -68,13 +68,14 @@ def find_workdir():
     else:
         return None
 
+
 def _make_eblt_input():
     pass
 
-class Eblt(CommandWrapper):
-    """
 
-    """
+class EBLT(CommandWrapper):
+    """ """
+
     COMMAND: ClassVar[str] = "xeblt"
     COMMAND_MPI: ClassVar[str] = "xeblt-par"
     MPI_RUN: ClassVar[str] = find_mpirun()
@@ -85,16 +86,16 @@ class Eblt(CommandWrapper):
     command_mpi_env: str = "EBLT_BIN"
     original_path: AnyPath
 
-    _input: EbltInput
-    output: Optional[EbltOutput]
+    _input: EBLTInput
+    output: Optional[EBLTOutput]
 
     def __init__(
         self,
-        input: Optional[Union[MainInput, EbltInput, str, pathlib.Path]] = None,
+        input: Optional[Union[MainInput, EBLTInput, str, pathlib.Path]] = None,
         lattice: Union[Lattice, str, pathlib.Path] = "",
         *,
         workdir: Optional[Union[str, pathlib.Path]] = None,
-        output: Optional[EbltOutput] = None,
+        output: Optional[EBLTOutput] = None,
         alias: Optional[Dict[str, str]] = None,
         units: Optional[Dict[str, pmd_unit]] = None,
         command: Optional[str] = None,
@@ -104,7 +105,7 @@ class Eblt(CommandWrapper):
         use_temp_dir: bool = True,
         verbose: bool = tools.global_display_options.verbose >= 1,
         timeout: Optional[float] = None,
-        initial_particles: Optional[Union[ParticleGroup, EbltParticleData]] = None,
+        initial_particles: Optional[Union[ParticleGroup, EBLTParticleData]] = None,
         initial_field: Optional[FieldFile] = None,
         **kwargs: Any,
     ):
@@ -121,18 +122,18 @@ class Eblt(CommandWrapper):
         )
 
         if input is None:
-            input = EbltInput(
+            input = EBLTInput(
                 main=MainInput(),
                 lattice=Lattice(),
                 initial_particles=initial_particles,
             )
         elif isinstance(input, MainInput):
-            input = EbltInput.from_main_input(
+            input = EBLTInput.from_main_input(
                 main=input,
                 lattice=lattice,
                 source_path=pathlib.Path(workdir or "."),
             )
-        elif not isinstance(input, EbltInput):
+        elif not isinstance(input, EBLTInput):
             # We have either a string or a filename for our main input.
             workdir, input = _make_eblt_input(
                 input,
@@ -141,8 +142,8 @@ class Eblt(CommandWrapper):
             )
 
         if (
-                input.initial_particles is not initial_particles
-                and initial_particles is not None
+            input.initial_particles is not initial_particles
+            and initial_particles is not None
         ):
             input.initial_particles = initial_particles
 
@@ -165,16 +166,16 @@ class Eblt(CommandWrapper):
         self.nnode = 1
 
     @property
-    def input(self) -> EbltInput:
-        """Eblt input"""
+    def input(self) -> EBLTInput:
+        """EBLT input"""
         return self._input
 
     @input.setter
     def input(self, inp: Any) -> None:
-        if not isinstance(inp, EbltInput):
+        if not isinstance(inp, EBLTInput):
             raise ValueError(
-                f"The provided input is of type {type(inp).__name__} and not `EbltInput`. "
-                f"Please consider creating a new Eblt object instead with the "
+                f"The provided input is of type {type(inp).__name__} and not `EBLTInput`. "
+                f"Please consider creating a new EBLT object instead with the "
                 f"new parameters!"
             )
         self._input = inp
@@ -209,12 +210,13 @@ class Eblt(CommandWrapper):
         self.finished = False
 
     @override
-    def run(self,
-            load_particles: bool = False,
-            raise_on_error: bool = True,
-    ) -> EbltOutput:
+    def run(
+        self,
+        load_particles: bool = False,
+        raise_on_error: bool = True,
+    ) -> EBLTOutput:
         """
-        Execute Eblt 4 with the configured input settings.
+        Execute EBLT 4 with the configured input settings.
 
         Parameters
         ----------
@@ -226,13 +228,13 @@ class Eblt(CommandWrapper):
             If set, for particles, this will smear the phase over the sample
             (skipped) slices, preserving the modulus.
         raise_on_error : bool, default=True
-            If Eblt 4 fails to run, raise an error. Depending on the error,
+            If EBLT 4 fails to run, raise an error. Depending on the error,
             output information may still be accessible in the ``.output``
             attribute.
 
         Returns
         -------
-        EbltOutput
+        EBLTOutput
             The output data.  This is also accessible as ``.output``.
         """
         if not self.configured:
@@ -300,31 +302,26 @@ class Eblt(CommandWrapper):
         self.vprint(f"{success_or_failure} - execution took {run_info.run_time:0.2f}s.")
 
         try:
-            self.output = self.load_output(
-                load_fields=load_fields,
-                load_particles=load_particles,
-                smear=smear,
-            )
+            self.output = self.load_output()
+
         except Exception as ex:
             stack = traceback.format_exc()
             run_info.error = True
             run_info.error_reason = (
                 f"Failed to load output file. {ex.__class__.__name__}: {ex}\n{stack}"
             )
-            self.output = EbltOutput(run=run_info)
+            self.output = EBLTOutput(run=run_info)
             if hasattr(ex, "add_note"):
                 # Python 3.11+
                 ex.add_note(
-                    f"\nEBLT output was:\n\n{execute_result['log']}\n(End of Eblt output)"
+                    f"\nEBLT output was:\n\n{execute_result['log']}\n(End of EBLT output)"
                 )
             if raise_on_error:
                 raise
 
         self.output.run = run_info
         if run_info.error and raise_on_error:
-            raise EbltRunFailure(
-                f"EBLT failed to run: {run_info.error_reason}"
-            )
+            raise EBLTRunFailure(f"EBLT failed to run: {run_info.error_reason}")
 
         return self.output
 
@@ -418,9 +415,9 @@ class Eblt(CommandWrapper):
 
     @override
     def write_input(
-            self,
-            path: Optional[AnyPath] = None,
-            write_run_script: bool = True,
+        self,
+        path: Optional[AnyPath] = None,
+        write_run_script: bool = True,
     ):
         """
         Write the input parameters into the file.
@@ -446,14 +443,14 @@ class Eblt(CommandWrapper):
 
     @property
     @override
-    def initial_particles(self) -> Optional[Union[ParticleGroup, EbltParticleData]]:
+    def initial_particles(self) -> Optional[Union[ParticleGroup, EBLTParticleData]]:
         """Initial particles, if defined.  Property is alias for `.input.main.initial_particles`."""
         return self.input.initial_particles
 
     @initial_particles.setter
     def initial_particles(
-            self,
-            value: Optional[Union[ParticleGroup, EbltParticleData]],
+        self,
+        value: Optional[Union[ParticleGroup, EBLTParticleData]],
     ) -> None:
         self.input.initial_particles = value
 
@@ -480,12 +477,14 @@ class Eblt(CommandWrapper):
     to_hdf5 = archive
 
     def _load_archive(self, h5: h5py.Group):
-        self.input = Genesis4Input.from_archive(h5["input"])
-        if "output" in h5:
-            self.output = Genesis4Output.from_archive(h5["output"])
-        else:
-            self.output = None
+        raise NotImplementedError
+        # self.input = Genesis4Input.from_archive(h5["input"])
+        # if "output" in h5:
+        #    self.output = Genesis4Output.from_archive(h5["output"])
+        # else:
+        #    self.output = None
 
+    #
     @override
     def load_archive(self, arch: Union[AnyPath, h5py.Group]) -> None:
         """
@@ -503,7 +502,7 @@ class Eblt(CommandWrapper):
 
     @override
     @classmethod
-    def from_archive(cls, arch: Union[AnyPath, h5py.Group]) -> Genesis4:
+    def from_archive(cls, arch: Union[AnyPath, h5py.Group]) -> EBLT:
         """
         Create a new Genesis4 object from an archive file.
 
@@ -516,7 +515,7 @@ class Eblt(CommandWrapper):
         return inst
 
     @override
-    def load_output(self) -> EbltOutput:
+    def load_output(self) -> EBLTOutput:
         pass
 
     def plot(self):
@@ -562,12 +561,12 @@ class Eblt(CommandWrapper):
 
     @override
     def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, Eblt):
+        if not isinstance(other, EBLT):
             return False
         return self.input == other.input and self.output == other.output
 
     @override
     def __ne__(self, other: Any) -> bool:
-        if not isinstance(other, Eblt):
+        if not isinstance(other, EBLT):
             return False
         return self.input != other.input or self.output != other.output

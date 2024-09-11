@@ -117,3 +117,6 @@ docs/examples/tmp*
 
 # Don't include JupyterLab language server (LSP) files:
 /.virtual_documents
+
+# fort. output files
+fort.*

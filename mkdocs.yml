@@ -7,11 +7,7 @@ nav:
   - Installation: installation.md
   - eblt:
       - Examples:
-          - examples/eblt_example.ipynb
-          - examples/example_parse_eblt_lattice.ipynb
-          - examples/example_parsing_eblt_out.ipynb
-          - examples/example_parsing_eblt_field.ipynb
-      - API: api/eblt.md
+          - examples/eblt_devel.ipynb
 
 theme:
   icon:
