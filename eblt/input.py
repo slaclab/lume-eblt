@@ -5,12 +5,12 @@ from typing import List, Optional, Union
 
 # Define the base classes for coefficients and lattice elements
 class Parameters(BaseModel):
-    np: int = Field(..., description="Number of points in the longitudinal grid")
-    nz: int = Field(..., description="Number of points in the transverse grid")
+    np: int = Field(..., description="Number of macroparticles")
+    nz: int = Field(..., description="Number of longitudinal grid poisnts")
     zmin: float = Field(..., description="Minimum z-coordinate (m)")
     zmax: float = Field(..., description="Maximum z-coordinate (m)")
     flagfwd: int = Field(..., description="Flag for forward tracking")
-    flagdist: int = Field(..., description="Flag for distance measurement")
+    flagdist: int = Field(..., description="Switch for different type of initial distributions")
     Iavg: float = Field(..., description="Average current (A)")
     Ek: float = Field(..., description="Kinetic energy (eV)")
     mass: float = Field(..., description="Mass (MeV/c^2)")

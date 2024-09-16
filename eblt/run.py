@@ -18,14 +18,16 @@ from pmd_beamphysics import ParticleGroup
 from pmd_beamphysics.units import pmd_unit
 from typing_extensions import override
 
-from .. import tools
-from ..errors import EBLTRunFailure
-from . import parsers
-from .field import FieldFile
-from .input import EBLTInput, Lattice, MainInput
-from .output import EBLTOutput, RunInfo
-from .particles import EBLTParticleData
-from .types import AnyPath
+#from .. import tools
+#from ..errors import EBLTRunFailure
+#from . import parsers
+
+
+from .input import EBLTInput, assign_names_to_elements
+from .output import EBLTOutput
+from .particles import EBLTParticleData, ImpactTPacticleData
+
+#from .types import AnyPath
 
 logger = logging.getLogger(__name__)
 
@@ -69,8 +71,8 @@ def find_workdir():
         return None
 
 
-def _make_eblt_input():
-    pass
+#def _make_eblt_input():
+#    pass
 
 
 class EBLT(CommandWrapper):
@@ -91,8 +93,7 @@ class EBLT(CommandWrapper):
 
     def __init__(
         self,
-        input: Optional[Union[MainInput, EBLTInput, str, pathlib.Path]] = None,
-        lattice: Union[Lattice, str, pathlib.Path] = "",
+        input: Union[EBLTInput, str, pathlib.Path],
         *,
         workdir: Optional[Union[str, pathlib.Path]] = None,
         output: Optional[EBLTOutput] = None,
@@ -105,8 +106,7 @@ class EBLT(CommandWrapper):
         use_temp_dir: bool = True,
         verbose: bool = tools.global_display_options.verbose >= 1,
         timeout: Optional[float] = None,
-        initial_particles: Optional[Union[ParticleGroup, EBLTParticleData]] = None,
-        initial_field: Optional[FieldFile] = None,
+        initial_particles: Optional[Union[ParticleGroup, EBLTParticleData, ImpactTPacticleData]] = None,
         **kwargs: Any,
     ):
         super().__init__(
@@ -121,25 +121,11 @@ class EBLT(CommandWrapper):
             **kwargs,
         )
 
-        if input is None:
-            input = EBLTInput(
-                main=MainInput(),
-                lattice=Lattice(),
-                initial_particles=initial_particles,
-            )
-        elif isinstance(input, MainInput):
-            input = EBLTInput.from_main_input(
-                main=input,
-                lattice=lattice,
-                source_path=pathlib.Path(workdir or "."),
-            )
-        elif not isinstance(input, EBLTInput):
+
+        if not isinstance(input, EBLTInput):
             # We have either a string or a filename for our main input.
-            workdir, input = _make_eblt_input(
-                input,
-                lattice,
-                source_path=workdir,
-            )
+            input = EBLTInput.from_file(input)
+            assign_names_to_elements(input.lattice_lines)
 
         if (
             input.initial_particles is not initial_particles
@@ -147,19 +133,12 @@ class EBLT(CommandWrapper):
         ):
             input.initial_particles = initial_particles
 
-        if input.initial_field is not initial_field and initial_field is not None:
-            input.initial_field = initial_field
-
         if workdir is None:
             workdir = pathlib.Path(".")
 
         self.original_path = workdir
         self._input = input
         self.output = output
-
-        # Internal
-        self._units = dict(units or parsers.known_unit)
-        self._alias = dict(alias or {})
 
         # MPI
         self.nproc = 1
@@ -216,19 +195,14 @@ class EBLT(CommandWrapper):
         raise_on_error: bool = True,
     ) -> EBLTOutput:
         """
-        Execute EBLT 4 with the configured input settings.
+        Execute EBLT with the configured input settings.
 
         Parameters
         ----------
-        load_fields : bool, default=False
-            After execution, load all field files.
         load_particles : bool, default=False
             After execution, load all particle files.
-        smear : bool, default=True
-            If set, for particles, this will smear the phase over the sample
-            (skipped) slices, preserving the modulus.
         raise_on_error : bool, default=True
-            If EBLT 4 fails to run, raise an error. Depending on the error,
+            If EBLT fails to run, raise an error. Depending on the error,
             output information may still be accessible in the ``.output``
             attribute.
 
