@@ -19,7 +19,9 @@ class EBLTParticleData(BaseModel):
     def from_ParticleGroup(cls, pg: ParticleGroup) -> "EBLTParticleData":
         return cls(
             z = pg.z,
-            delta_gamma = pg.gamma - pg.
+            delta_gamma = pg.gamma - pg.mean_gamma,
+            delta_e_over_e0 = (pg.gamma - pg.mean_gamma)/pg.mean_gamma,
+            weight = pg.weight
         )
 
     @classmethod
@@ -40,6 +42,14 @@ class EBLTParticleData(BaseModel):
     @classmethod
     def write_EBLT_input(cls, path: AnyPath, verbose: bool = True) -> None:
         pass
+
+    @property
+    def gamma0(self):
+        return self.delta_gamma / self.delta_e_over_e0
+
+    @property
+    def gamma(self):
+        return self.gamma0 + self.delta_gamma
 
 
 
