@@ -18,7 +18,7 @@ from pmd_beamphysics import ParticleGroup
 from pmd_beamphysics.units import pmd_unit
 from typing_extensions import override
 
-import tools
+from . import tools
 #from ..errors import EBLTRunFailure
 #from . import parsers
 from .output import RunInfo
@@ -124,9 +124,9 @@ class EBLT(CommandWrapper):
 
         if not isinstance(input, EBLTInput):
             # We have either a string or a filename for our main input.
-            self._input = EBLTInput.from_file(input)
             self.original_path, _ = os.path.split(input)
-            assign_names_to_elements(self._input.lattice_lines)
+            input = EBLTInput.from_file(input)
+            assign_names_to_elements(input.lattice_lines)
 
 
         if initial_particles:
@@ -494,6 +494,64 @@ class EBLT(CommandWrapper):
 
                 rec.append(file_id)
 
+    def _archive(self, h5: h5py.Group):
+        self.input.archive(h5.create_group("input"))
+        if self.output is not None:
+            self.output.archive(h5.create_group("output"))
+
+    @override
+    def archive(self, dest: Union[AnyPath, h5py.Group]) -> None:
+        """
+        Archive the latest run, input and output, to a single HDF5 file.
+
+        Parameters
+        ----------
+        dest : filename or h5py.Group
+        """
+        if isinstance(dest, (str, pathlib.Path)):
+            with h5py.File(dest, "w") as fp:
+                self._archive(fp)
+        elif isinstance(dest, (h5py.File, h5py.Group)):
+            self._archive(dest)
+
+    to_hdf5 = archive
+
+    def _load_archive(self, h5: h5py.Group):
+        self.input = Genesis4Input.from_archive(h5["input"])
+        if "output" in h5:
+            self.output = Genesis4Output.from_archive(h5["output"])
+        else:
+            self.output = None
+
+    @override
+    def load_archive(self, arch: Union[AnyPath, h5py.Group]) -> None:
+        """
+        Load an archive from a single HDF5 file into this Genesis4 object.
+
+        Parameters
+        ----------
+        arch : filename or h5py.Group
+        """
+        if isinstance(arch, (str, pathlib.Path)):
+            with h5py.File(arch, "r") as fp:
+                self._load_archive(fp)
+        elif isinstance(arch, (h5py.File, h5py.Group)):
+            self._load_archive(arch)
+
+    @override
+    @classmethod
+    def from_archive(cls, arch: Union[AnyPath, h5py.Group]) -> Genesis4:
+        """
+        Create a new Genesis4 object from an archive file.
+
+        Parameters
+        ----------
+        arch : filename or h5py.Group
+        """
+        inst = cls()
+        inst.load_archive(arch)
+        return inst
+
     @override
     def load_output(self) -> EBLTOutput:
         return EBLTOutput.from_directory(self.path)
@@ -502,8 +560,30 @@ class EBLT(CommandWrapper):
     def plot(self):
         pass
 
-    def stat(self):
-        pass
+    def stat(self, key: str):
+        if self.output is None:
+            raise RuntimeError(
+                "EBLT has not yet been run; there is no output to get statistics from."
+            )
+        return self.output.stat(key=key)
+
+    @override
+    @staticmethod
+    def input_parser(path: AnyPath) -> EBLTInput:
+        """
+        Invoke the specialized main input parser and returns the `MainInput`
+        instance.
+
+        Parameters
+        ----------
+        path : str or pathlib.Path
+            Path to the main input file.
+
+        Returns
+        -------
+        MainInput
+        """
+        return EBLTInput.from_file(path)
 
     @override
     def __eq__(self, other: Any) -> bool:

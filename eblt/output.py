@@ -5,7 +5,48 @@ from pydantic import BaseModel, Field, ValidationError
 from typing import Any, Sequence, Type, Union, Annotated, Optional, Dict
 import pydantic
 import pydantic_core
-from .types import NDArray
+
+
+# Custom Pydantic class to handle numpy ndarray
+class _PydanticNDArray:
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls,
+        source: Type[Any],
+        handler: pydantic.GetCoreSchemaHandler,
+    ) -> pydantic_core.core_schema.CoreSchema:
+        def serialize(
+            obj: np.ndarray, info: pydantic_core.core_schema.SerializationInfo
+        ):
+            if not isinstance(obj, np.ndarray):
+                raise ValueError(
+                    f"Only supports numpy ndarray. Got {type(obj).__name__}: {obj}"
+                )
+            return obj.tolist()
+
+        return pydantic_core.core_schema.with_info_plain_validator_function(
+            cls._pydantic_validate,
+            serialization=pydantic_core.core_schema.plain_serializer_function_ser_schema(
+                serialize, when_used="json-unless-none", info_arg=True
+            ),
+        )
+
+    @classmethod
+    def _pydantic_validate(
+        cls,
+        value: Union[Any, np.ndarray, Sequence, dict],
+        info: pydantic_core.core_schema.ValidationInfo,
+    ) -> np.ndarray:
+        if isinstance(value, np.ndarray):
+            return value
+        if isinstance(value, Sequence):
+            return np.asarray(value)
+        raise ValueError(f"No conversion from {value!r} to numpy ndarray")
+
+
+# Annotate numpy arrays to be handled by the custom class
+NDArray = Annotated[np.ndarray, _PydanticNDArray]
+
 
 # Model for stats (formerly fort.2)
 class StatsOutput(BaseModel):
@@ -114,8 +155,6 @@ class EBLTOutput(BaseModel):
         output["particle_distributions"] = particle_distributions
 
         return cls(**output)
-
-
 class RunInfo(BaseModel):
     """
     run information.
@@ -123,7 +162,7 @@ class RunInfo(BaseModel):
     Attributes
     ----------
     error : bool
-        True if an error occurred during the run.
+        True if an error occurred during the  run.
     error_reason : str or None
         Error explanation, if `error` is set.
     run_script : str
@@ -139,7 +178,7 @@ class RunInfo(BaseModel):
     """
 
     error: bool = pydantic.Field(
-        default=False, description="`True` if an error occurred during the Genesis run"
+        default=False, description="`True` if an error occurred during the EBLT run"
     )
     error_reason: Optional[str] = pydantic.Field(
         default=None, description="Error explanation, if `error` is set."
@@ -164,7 +203,6 @@ class RunInfo(BaseModel):
     def success(self) -> bool:
         """`True` if the run was successful."""
         return not self.error
-
 
 # Example Usage
 if __name__ == "__main__":
