@@ -470,15 +470,15 @@ class EBLT(CommandWrapper):
         rec = []
         for lattice_element in self._input.lattice_lines:
             if isinstance(lattice_element, Wakefield):
-                file_id = lattice_element.file_id
+                file_id = lattice_element.wake_function_file_id
 
                 if file_id in rec:
                     continue
 
-                filename = 'rfdata' + str(file_id)
+                filename = 'rfdata' + str(int(file_id))
                 src = os.path.join(self.original_path, filename)
 
-                assert os.path.isfile(src), "Wakefield file not found"
+                assert os.path.isfile(src), "Wakefield file " + src +  "  not found"
 
                 dest = os.path.join(path, filename)
 
