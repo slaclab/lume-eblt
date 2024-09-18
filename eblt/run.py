@@ -21,6 +21,7 @@ from typing_extensions import override
 import tools
 #from ..errors import EBLTRunFailure
 #from . import parsers
+from .output import RunInfo
 
 
 from .input import EBLTInput, assign_names_to_elements, DriftTube, Bend, RFCavity,Wakefield
@@ -297,7 +298,7 @@ class EBLT(CommandWrapper):
 
         self.output.run = run_info
         if run_info.error and raise_on_error:
-            raise EBLTRunFailure(f"EBLT failed to run: {run_info.error_reason}")
+            raise Exception(f"EBLT failed to run: {run_info.error_reason}")
 
         return self.output
 
@@ -489,7 +490,7 @@ class EBLT(CommandWrapper):
                     shutil.copyfile(src, dest)
                     # writers.write_input_particles_from_file(src, dest, self.header['Np'])
                 else:
-                    self.vprint(f'{} already exits, will not overwrite.'.format(filename))
+                    self.vprint(filename + ' already exits, will not overwrite.')
 
                 rec.append(file_id)
 
