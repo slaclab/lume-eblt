@@ -18,16 +18,16 @@ from pmd_beamphysics import ParticleGroup
 from pmd_beamphysics.units import pmd_unit
 from typing_extensions import override
 
-#from .. import tools
+import tools
 #from ..errors import EBLTRunFailure
 #from . import parsers
 
 
-from .input import EBLTInput, assign_names_to_elements
+from .input import EBLTInput, assign_names_to_elements, DriftTube, Bend, RFCavity,Wakefield
 from .output import EBLTOutput
-from .particles import EBLTParticleData, ImpactTPacticleData
+from .particles import EBLTParticleData
 
-#from .types import AnyPath
+from .types import AnyPath
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +90,7 @@ class EBLT(CommandWrapper):
 
     _input: EBLTInput
     output: Optional[EBLTOutput]
+    initial_particles: Optional[EBLTParticleData] = None
 
     def __init__(
         self,
@@ -97,8 +98,6 @@ class EBLT(CommandWrapper):
         *,
         workdir: Optional[Union[str, pathlib.Path]] = None,
         output: Optional[EBLTOutput] = None,
-        alias: Optional[Dict[str, str]] = None,
-        units: Optional[Dict[str, pmd_unit]] = None,
         command: Optional[str] = None,
         command_mpi: Optional[str] = None,
         use_mpi: bool = False,
@@ -106,7 +105,7 @@ class EBLT(CommandWrapper):
         use_temp_dir: bool = True,
         verbose: bool = tools.global_display_options.verbose >= 1,
         timeout: Optional[float] = None,
-        initial_particles: Optional[Union[ParticleGroup, EBLTParticleData, ImpactTPacticleData]] = None,
+        initial_particles: Optional[Union[ParticleGroup, EBLTParticleData]] = None,
         **kwargs: Any,
     ):
         super().__init__(
@@ -120,23 +119,26 @@ class EBLT(CommandWrapper):
             timeout=timeout,
             **kwargs,
         )
-
+        self.original_path = workdir
 
         if not isinstance(input, EBLTInput):
             # We have either a string or a filename for our main input.
-            input = EBLTInput.from_file(input)
-            assign_names_to_elements(input.lattice_lines)
+            self._input = EBLTInput.from_file(input)
+            self.original_path, _ = os.path.split(input)
+            assign_names_to_elements(self._input.lattice_lines)
 
-        if (
-            input.initial_particles is not initial_particles
-            and initial_particles is not None
-        ):
-            input.initial_particles = initial_particles
+
+        if initial_particles:
+            if isinstance(initial_particles, ParticleGroup):
+                self.initial_particles = EBLTParticleData.from_ParticleGroup(initial_particles)
+            else:
+                self.initial_particles = initial_particles
+
 
         if workdir is None:
             workdir = pathlib.Path(".")
 
-        self.original_path = workdir
+
         self._input = input
         self.output = output
 
@@ -411,22 +413,94 @@ class EBLT(CommandWrapper):
             raise ValueError("Path has not yet been set; cannot write input.")
 
         path = pathlib.Path(path)
-        self.input.write(workdir=path)
+
+        # write wakefield
+        self.write_wakefield(path)
+
+        # write initial particles
+        self.write_initial_particles(path)
+
+
+
+        # write main input file
+        filename = os.path.join(path, 'eblt.in')
+        self.input.to_file(filename=filename)
+
+
+
+        # write run script
         if write_run_script:
             self.write_run_script(path)
 
-    @property
-    @override
-    def initial_particles(self) -> Optional[Union[ParticleGroup, EBLTParticleData]]:
-        """Initial particles, if defined.  Property is alias for `.input.main.initial_particles`."""
-        return self.input.initial_particles
+    def write_initial_particles(self, path: Optional[AnyPath] = None) -> None:
+        if self.initial_particles:
+            self.initial_particles.write_EBLT_input(path)
+            #update header
+            self._input.parameters.flagdist = 100
+            # update beam radius
+            if self.initial_particles.beam_radius:
+                self.update_beam_radius(self.initial_particles.beam_radius)
 
-    @initial_particles.setter
-    def initial_particles(
-        self,
-        value: Optional[Union[ParticleGroup, EBLTParticleData]],
-    ) -> None:
-        self.input.initial_particles = value
+        elif self._input.parameters.flagdist in [100, 200, 300]:
+            src = os.path.join(self.original_path, 'pts.in')
+            dest = os.path.join(path, 'pts.in')
+
+            assert os.path.isfile(src), "Initial particles file not found"
+
+            # Don't worry about overwriting in temporary directories
+            if self._tempdir and os.path.exists(dest):
+                os.remove(dest)
+
+            if not os.path.exists(dest):
+                shutil.copyfile(src, dest)
+                #writers.write_input_particles_from_file(src, dest, self.header['Np'])
+            else:
+                self.vprint('pts.in already exits, will not overwrite.')
+
+    def update_beam_radius(self, r: float) -> None:
+        print('Updating beam radius in the lattice to be ', r)
+        for lattice_element in self._input.lattice_lines:
+            if (isinstance(lattice_element, DriftTube) or
+                    isinstance(lattice_element, Bend) or
+                    isinstance(lattice_element, RFCavity)):
+                lattice_element.V1 = r
+
+    def write_wakefield(self, path: Optional[AnyPath] = None) -> None:
+        rec = []
+        for lattice_element in self._input.lattice_lines:
+            if isinstance(lattice_element, Wakefield):
+                file_id = lattice_element.file_id
+
+                if file_id in rec:
+                    continue
+
+                filename = 'rfdata' + str(file_id)
+                src = os.path.join(self.original_path, filename)
+
+                assert os.path.isfile(src), "Wakefield file not found"
+
+                dest = os.path.join(path, filename)
+
+                # Don't worry about overwriting in temporary directories
+                if self._tempdir and os.path.exists(dest):
+                    os.remove(dest)
+
+                if not os.path.exists(dest):
+                    shutil.copyfile(src, dest)
+                    # writers.write_input_particles_from_file(src, dest, self.header['Np'])
+                else:
+                    self.vprint(f'{} already exits, will not overwrite.'.format(filename))
+
+                rec.append(file_id)
+
+
+
+
+
+
+
+
+
 
     def _archive(self, h5: h5py.Group):
         self.input.archive(h5.create_group("input"))
@@ -490,48 +564,14 @@ class EBLT(CommandWrapper):
 
     @override
     def load_output(self) -> EBLTOutput:
-        pass
+        return EBLTOutput.from_directory(self.path)
+
 
     def plot(self):
         pass
 
     def stat(self):
         pass
-
-    @override
-    @staticmethod
-    def input_parser(path: AnyPath) -> MainInput:
-        """
-        Invoke the specialized main input parser and returns the `MainInput`
-        instance.
-
-        Parameters
-        ----------
-        path : str or pathlib.Path
-            Path to the main input file.
-
-        Returns
-        -------
-        MainInput
-        """
-        return MainInput.from_file(path)
-
-    @staticmethod
-    def lattice_parser(path: AnyPath) -> Lattice:
-        """
-        Invoke the specialized lattice input parser and returns the `Lattice`
-        instance.
-
-        Parameters
-        ----------
-        path : str or pathlib.Path
-            Path to the lattice input file.
-
-        Returns
-        -------
-        Lattice
-        """
-        return Lattice.from_file(path)
 
     @override
     def __eq__(self, other: Any) -> bool:

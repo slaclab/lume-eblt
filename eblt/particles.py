@@ -3,7 +3,10 @@ import h5py
 from pydantic import BaseModel, Field
 from .types import AnyPath, NDArray
 from pmd_beamphysics import ParticleGroup
+from pmd_beamphysics.interfaces.impact import parse_impact_particles, impact_particles_to_particle_data
 import numpy as np
+from pmd_beamphysics.units import mec2
+import os
 
 class EBLTParticleData(BaseModel):
     """
@@ -13,15 +16,17 @@ class EBLTParticleData(BaseModel):
     delta_gamma: NDArray = Field(..., description="Δγ")
     weight: NDArray = Field(..., description="Particle weight")
     delta_e_over_e0: NDArray = Field(..., description="dE/E0")
+    beam_radius: float = None
 
 
     @classmethod
     def from_ParticleGroup(cls, pg: ParticleGroup) -> "EBLTParticleData":
         return cls(
             z = pg.z,
-            delta_gamma = pg.gamma - pg.mean_gamma,
-            delta_e_over_e0 = (pg.gamma - pg.mean_gamma)/pg.mean_gamma,
-            weight = pg.weight
+            delta_gamma = pg.gamma - pg.avg('gamma'),
+            delta_e_over_e0 = (pg['energy'] - pg['mean_energy'])/pg['mean_energy'],
+            weight = pg.weight,
+            beam_radius = np.sqrt(pg['sigma_x']**2 + pg['sigma_y']**2)
         )
 
     @classmethod
@@ -36,12 +41,39 @@ class EBLTParticleData(BaseModel):
         )
 
     @classmethod
-    def from_ImpactT_outputfile(cls, path: AnyPath) -> "EBLTParticleData":
-        pass
+    def from_ImpactT_outputfile(cls, path: AnyPath,
+                                mc2: float = mec2, species: str = 'electron') -> "EBLTParticleData":
+        tout = parse_impact_particles(path)
+        data = impact_particles_to_particle_data(tout, mc2, species)
+        pg = ParticleGroup(data=data)
+        return cls.from_ParticleGroup(pg)
 
-    @classmethod
-    def write_EBLT_input(cls, path: AnyPath, verbose: bool = True) -> None:
-        pass
+
+    def to_particlegroup_data(self) ->ParticleGroup:
+        z = self.z
+        gamma = self.gamma
+        weight = self.weight
+        n = len(z)
+        pz = np.sqrt(gamma**2 - 1) * mec2
+        particlegroup_data = dict(  t=np.zeros(n),
+                                    x=np.zeros(n),
+                                    px=np.zeros(n),
+                                    y=np.zeros(n),
+                                    py=np.zeros(n),
+                                    z=self.z,
+                                    pz=pz,
+                                    weight=weight,
+                                    status=np.ones(n),
+                                    species="electron",
+                                )
+        return ParticleGroup(data= particlegroup_data)
+
+
+    def write_EBLT_input(self, path: AnyPath, verbose: bool = True) -> None:
+        data = np.vstack(self.z, self.delta_gamma, self.weight, self.delta_e_over_e0).T
+        file_path = os.path.join(path, 'pts.in')
+        np.savetxt(file_path, data)
+
 
     @property
     def gamma0(self):
