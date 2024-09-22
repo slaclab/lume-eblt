@@ -1,26 +1,17 @@
 from __future__ import annotations
 
-import datetime
-import enum
-import functools
-import html
-import importlib
-import inspect
+
 import logging
-import pathlib
-import string
+
 import subprocess
-import sys
-import textwrap
+
 import traceback
-import typing
-import uuid
-from numbers import Number
-from typing import Any, Dict, Generator, Mapping, Optional, Sequence, Tuple, Union
+
+from typing import  Union
+from .types import AnyPath, NDArray
 
 import numpy as np
 import prettytable
-import pydantic
 import pydantic_settings
 
 try:
@@ -81,8 +72,67 @@ class DisplayOptions(
 global_display_options = DisplayOptions()
 
 
+def safe_loadtxt(filepath: AnyPath, **kwargs) -> NDArray:
+    """
+    Similar to np.loadtxt, but handles old-style exponents d -> e
+    """
+    s = open(filepath).readlines()
+    s = list(map(lambda x: x.lower().replace('d', 'e'), s))
+    return np.loadtxt(s, **kwargs)
 
 
+def execute(cmd, cwd=None):
+    """
+    Constantly print Subprocess output while process is running
+    from: https://stackoverflow.com/questions/4417546/constantly-print-subprocess-output-while-process-is-running
+
+    # Example usage:
+        for path in execute(["locate", "a"]):
+        print(path, end="")
+
+    Useful in Jupyter notebook
+
+    """
+    popen = subprocess.Popen(
+        cmd, stdout=subprocess.PIPE, universal_newlines=True, cwd=cwd
+    )
+    for stdout_line in iter(popen.stdout.readline, ""):
+        yield stdout_line
+    popen.stdout.close()
+    return_code = popen.wait()
+    if return_code:
+        raise subprocess.CalledProcessError(return_code, cmd)
 
 
+# Alternative execute
+def execute2(cmd, timeout=None, cwd=None):
+    """
+    Execute with time limit (timeout) in seconds, catching run errors.
+    """
+    output = {"error": True, "log": ""}
+    try:
+        p = subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            universal_newlines=True,
+            timeout=timeout,
+            cwd=cwd,
+        )
+        output["log"] = p.stdout
+        output["error"] = False
+        output["why_error"] = ""
+    except subprocess.TimeoutExpired as ex:
+        stdout = ex.stdout or b""
+        output["log"] = "\n".join((stdout.decode(), f"{ex.__class__.__name__}: {ex}"))
+        output["why_error"] = "timeout"
+    except subprocess.CalledProcessError as ex:
+        stdout = ex.stdout or b""
+        output["log"] = "\n".join((stdout.decode(), f"{ex.__class__.__name__}: {ex}"))
+        output["why_error"] = "error"
+    except Exception as ex:
+        stack = traceback.print_exc()
+        output["log"] = f"Unknown run error: {ex.__class__.__name__}: {ex}\n{stack}"
+        output["why_error"] = "unknown"
+    return output
 

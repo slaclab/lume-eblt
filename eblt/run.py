@@ -8,21 +8,21 @@ import shlex
 import shutil
 import traceback
 from time import monotonic
-from typing import Any, ClassVar, Dict, Optional, Union
+from typing import Any, ClassVar,  Optional, Union
 
 import h5py
 import psutil
 from lume import tools as lume_tools
 from lume.base import CommandWrapper
 from pmd_beamphysics import ParticleGroup
-from pmd_beamphysics.units import pmd_unit
 from typing_extensions import override
 
 from . import tools
 #from ..errors import EBLTRunFailure
 #from . import parsers
 from .output import RunInfo
-
+from .fieldmap import  read_fieldmap_rfdata, write_fieldmap_rfdata
+from typing import List, Dict
 
 from .input import EBLTInput, assign_names_to_elements, DriftTube, Bend, RFCavity,Wakefield
 from .output import EBLTOutput
@@ -92,6 +92,7 @@ class EBLT(CommandWrapper):
     _input: EBLTInput
     output: Optional[EBLTOutput]
     initial_particles: Optional[EBLTParticleData] = None
+    fieldmaps: List[Dict] = []
 
     def __init__(
         self,
@@ -130,10 +131,12 @@ class EBLT(CommandWrapper):
 
 
         if initial_particles:
+            Ek = self._input.parameters.Ek
             if isinstance(initial_particles, ParticleGroup):
-                self.initial_particles = EBLTParticleData.from_ParticleGroup(initial_particles)
+                self.initial_particles = EBLTParticleData.from_ParticleGroup(initial_particles, Ek)
             else:
-                self.initial_particles = initial_particles
+                # If read from EBLT output, shift the ref energy to the one defined in input file
+                self.initial_particles = initial_particles.shift_ref_energy(Ek)
 
 
         if workdir is None:
@@ -190,6 +193,9 @@ class EBLT(CommandWrapper):
         self.vprint("Configured to run in:", self.path)
         self.configured = True
         self.finished = False
+
+
+
 
     @override
     def run(
@@ -421,6 +427,10 @@ class EBLT(CommandWrapper):
         # write initial particles
         self.write_initial_particles(path)
 
+        #Todo:  update beam radius
+        #  update beam radius given an external function
+        # self.update_beam_radius(r, name)
+
 
 
         # write main input file
@@ -433,14 +443,13 @@ class EBLT(CommandWrapper):
         if write_run_script:
             self.write_run_script(path)
 
-    def write_initial_particles(self, path: Optional[AnyPath] = None) -> None:
+    def write_initial_particles(self, path: Optional[AnyPath] = None  ) -> None:
         if self.initial_particles:
             self.initial_particles.write_EBLT_input(path)
             #update header
             self._input.parameters.flagdist = 100
-            # update beam radius
-            if self.initial_particles.beam_radius:
-                self.update_beam_radius(self.initial_particles.beam_radius)
+
+
 
         elif self._input.parameters.flagdist in [100, 200, 300]:
             src = os.path.join(self.original_path, 'pts.in')
@@ -457,16 +466,22 @@ class EBLT(CommandWrapper):
                 #writers.write_input_particles_from_file(src, dest, self.header['Np'])
             else:
                 self.vprint('pts.in already exits, will not overwrite.')
+    def update_ref_energy(self, Ek: float) -> None:
+        print("Updating Ek in the header and shifting the ref energy in particles.\n")
+        print("Warning: The lattice parameters may need to be updated with the new ref energy")
 
-    def update_beam_radius(self, r: float) -> None:
-        print('Updating beam radius in the lattice to be ', r)
+        self._input.parameters.Ek = Ek
+        self.initial_particles.shift_ref_energy(Ek)
+
+    def update_beam_radius(self, r: float, name: str) -> None:
+        print('Updating beam radius in the lattice element ', name,  ' to be ', r)
         for lattice_element in self._input.lattice_lines:
             if (isinstance(lattice_element, DriftTube) or
                     isinstance(lattice_element, Bend) or
-                    isinstance(lattice_element, RFCavity)):
+                    isinstance(lattice_element, RFCavity)) and lattice_element.name == name:
                 lattice_element.V1 = r
 
-    def write_wakefield(self, path: Optional[AnyPath] = None) -> None:
+    def load_wakefield(self, path: Optional[AnyPath] = None) -> None:
         rec = []
         for lattice_element in self._input.lattice_lines:
             if isinstance(lattice_element, Wakefield):
@@ -474,25 +489,26 @@ class EBLT(CommandWrapper):
 
                 if file_id in rec:
                     continue
-
-                filename = 'rfdata' + str(int(file_id))
-                src = os.path.join(self.original_path, filename)
-
-                assert os.path.isfile(src), "Wakefield file " + src +  "  not found"
-
-                dest = os.path.join(path, filename)
-
-                # Don't worry about overwriting in temporary directories
-                if self._tempdir and os.path.exists(dest):
-                    os.remove(dest)
-
-                if not os.path.exists(dest):
-                    shutil.copyfile(src, dest)
-                    # writers.write_input_particles_from_file(src, dest, self.header['Np'])
-                else:
-                    self.vprint(filename + ' already exits, will not overwrite.')
-
+                self.fieldmaps.append(read_fieldmap_rfdata(self.original_path, file_id))
                 rec.append(file_id)
+
+    def write_wakefield(self, path: Optional[AnyPath] = None) -> None:
+
+        for fieldmap in self.fieldmaps:
+
+            dest = os.path.join(path, fieldmap['info']['filename'])
+
+            # Don't worry about overwriting in temporary directories
+            if self._tempdir and os.path.exists(dest):
+                os.remove(dest)
+
+            if not os.path.exists(dest):
+                write_fieldmap_rfdata(dest, fieldmap)
+
+            else:
+                self.vprint(fieldmap['info']['filename'] + ' already exits, will not overwrite.')
+
+
 
     def _archive(self, h5: h5py.Group):
         self.input.archive(h5.create_group("input"))
@@ -517,9 +533,9 @@ class EBLT(CommandWrapper):
     to_hdf5 = archive
 
     def _load_archive(self, h5: h5py.Group):
-        self.input = Genesis4Input.from_archive(h5["input"])
+        self.input = EBLTInput.from_archive(h5["input"])
         if "output" in h5:
-            self.output = Genesis4Output.from_archive(h5["output"])
+            self.output = EBLTOutput.from_archive(h5["output"])
         else:
             self.output = None
 
@@ -540,7 +556,7 @@ class EBLT(CommandWrapper):
 
     @override
     @classmethod
-    def from_archive(cls, arch: Union[AnyPath, h5py.Group]) -> Genesis4:
+    def from_archive(cls, arch: Union[AnyPath, h5py.Group]) -> EBLTOutput:
         """
         Create a new Genesis4 object from an archive file.
 

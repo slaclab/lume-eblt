@@ -1,7 +1,8 @@
 import re
 from pydantic import BaseModel, Field, model_validator
 from typing import List, Optional, Union
-
+from . import archive as _archive
+import h5py
 
 # Define the base classes for coefficients and lattice elements
 class Parameters(BaseModel):
@@ -520,6 +521,35 @@ class EBLTInput(BaseModel):
         with open(filename, "w") as file:
             lines = self.to_lines()
             file.write("\n".join(lines) + "\n")
+
+    def archive(self, h5: h5py.Group) -> None:
+        """
+        Dump input data into the given HDF5 group.
+
+        Parameters
+        ----------
+        h5 : h5py.Group
+            The HDF5 file in which to write the information.
+        """
+        _archive.store_in_hdf5_file(h5, self)
+
+    @classmethod
+    def from_archive(cls, h5: h5py.Group) -> "EBLTInput":
+        """
+        Loads input from archived h5 file.
+
+        Parameters
+        ----------
+        h5 : str or h5py.File
+            The filename or handle on h5py.File from which to load data.
+        """
+        loaded = _archive.restore_from_hdf5_file(h5)
+        if not isinstance(loaded, EBLTInput):
+            raise ValueError(
+                f"Loaded {loaded.__class__.__name__} instead of a "
+                f"EBLTInput instance.  Was the HDF group correct?"
+            )
+        return loaded
 
 
 def assign_names_to_elements(

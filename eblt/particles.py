@@ -45,37 +45,53 @@ class EBLTParticleData(BaseModel):
     delta_gamma: NDArray = Field(..., description="Δγ")
     weight: NDArray = Field(..., description="Particle weight")
     delta_e_over_e0: NDArray = Field(..., description="dE/E0")
+    Ek: float = Field(None, description="Electron reference energy")
     beam_radius: float = None
 
 
     @classmethod
-    def from_ParticleGroup(cls, pg: ParticleGroup) -> "EBLTParticleData":
+    def from_ParticleGroup(cls, pg: ParticleGroup, Ek: float) -> "EBLTParticleData":
         return cls(
             z = pg.z,
-            delta_gamma = pg.gamma - pg.avg('gamma'),
-            delta_e_over_e0 = (pg['energy'] - pg['mean_energy'])/pg['mean_energy'],
+            delta_gamma = pg.gamma - Ek/mec2,
+            delta_e_over_e0 = (pg['energy'] - Ek)/Ek,
             weight = pg.weight,
+            Ek = Ek,
             beam_radius = np.sqrt(pg['sigma_x']**2 + pg['sigma_y']**2)
         )
 
     @classmethod
-    def from_EBLT_outputfile(cls, filepath: AnyPath) -> "EBLTParticleData":
+    def from_EBLT_outputfile(cls, filepath: AnyPath, Ek: float) -> "EBLTParticleData":
         data = np.loadtxt(filepath)
         data = np.atleast_2d(data)  # Ensure the data is always a 2D array
-        return cls(
-            z=data[:, 0],
+
+        # Update delta_gamma and delta_e_over_e0 given the new Ek
+
+        print('Shifting delta_e_over_e0 and delta_gamma given Ek')
+
+
+        output = cls(z=data[:, 0],
             delta_gamma=data[:, 1],
             weight=data[:, 2],
-            delta_e_over_e0=data[:, 3],
-        )
+            delta_e_over_e0=data[:, 3])
+
+        output.shift_ref_energy(Ek)
+
+        return output
+
+
+    def shift_ref_energy(self,  Ek: float) ->None:
+        self.delta_gamma = self.gamma - Ek/mec2
+        self.delta_e_over_e0 = self.delta_gamma /(Ek/mec2)
+        self.Ek = Ek
 
     @classmethod
-    def from_ImpactT_outputfile(cls, path: AnyPath,
+    def from_ImpactT_outputfile(cls, path: AnyPath, Ek: float,
                                 mc2: float = mec2, species: str = 'electron') -> "EBLTParticleData":
         tout = parse_impact_particles(path)
         data = impact_particles_to_particle_data(tout, mc2, species)
         pg = ParticleGroup(data=data)
-        return cls.from_ParticleGroup(pg)
+        return cls.from_ParticleGroup(pg, Ek)
 
 
     def to_particlegroup_data(self) ->ParticleGroup:
@@ -99,7 +115,7 @@ class EBLTParticleData(BaseModel):
 
 
     def write_EBLT_input(self, path: AnyPath, verbose: bool = True) -> None:
-        data = np.vstack(self.z, self.delta_gamma, self.weight, self.delta_e_over_e0).T
+        data = np.vstack((self.z, self.delta_gamma, self.weight, self.delta_e_over_e0)).T
         file_path = os.path.join(path, 'pts.in')
         np.savetxt(file_path, data)
 

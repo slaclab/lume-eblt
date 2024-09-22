@@ -5,7 +5,8 @@ from pydantic import BaseModel, Field, ValidationError
 from typing import Any, Sequence, Type, Union, Annotated, Optional, Dict
 import pydantic
 import pydantic_core
-
+from . import archive as _archive
+import h5py
 
 # Custom Pydantic class to handle numpy ndarray
 class _PydanticNDArray:
@@ -155,6 +156,36 @@ class EBLTOutput(BaseModel):
         output["particle_distributions"] = particle_distributions
 
         return cls(**output)
+
+    def archive(self, h5: h5py.Group) -> None:
+        """
+        Dump outputs into the given HDF5 group.
+
+        Parameters
+        ----------
+        h5 : h5py.Group
+            The HDF5 file in which to write the information.
+        """
+        _archive.store_in_hdf5_file(h5, self)
+
+    @classmethod
+    def from_archive(cls, h5: h5py.Group) -> "EBLTOutput":
+        """
+        Loads output from the given HDF5 group.
+
+        Parameters
+        ----------
+        h5 : str or h5py.File
+            The key to use when restoring the data.
+        """
+        loaded = _archive.restore_from_hdf5_file(h5)
+        if not isinstance(loaded, EBLTOutput):
+            raise ValueError(
+                f"Loaded {loaded.__class__.__name__} instead of a "
+                f"Genesis4Output instance.  Was the HDF group correct?"
+            )
+        return loaded
+
 class RunInfo(BaseModel):
     """
     run information.
