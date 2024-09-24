@@ -465,6 +465,7 @@ class EBLT(CommandWrapper):
                 #writers.write_input_particles_from_file(src, dest, self.header['Np'])
             else:
                 self.vprint('pts.in already exits, will not overwrite.')
+                
     def update_ref_energy(self, Ek: float) -> None:
         print("Updating Ek in the header and shifting the ref energy in particles.\n")
         print("Warning: The lattice parameters may need to be updated with the new ref energy")

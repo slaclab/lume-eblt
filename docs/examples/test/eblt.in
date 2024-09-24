@@ -1,0 +1,74 @@
+! np nz zmin zmax flagfwd flagdist
+1024 128 -0.002981592 0.002211398 1 100 /
+! a0 a1 a2 a3 a4 a5 a6 a7 a8 a9
+0 0 0 /
+! b0 b1 b2 b3 b4 b5 b6 b7 b8 b9
+1 0 0 /
+! Iavg Ek mass charge freq
+0.13 92706472 511005 -1 1300000000 /
+! length Bnseg Bmpstp ChangeEnergy energy_increment name
+0 1 1 -39 5462800 / !name: changeenergy1
+! length Bnseg Bmpstp Drift name
+74.9744159418 1 1 0 0.0003 / !name: drifttube1
+! length Bnseg Bmpstp Wakefield multiplier wake_function_file_id switch name
+0 1 1 -41 1 41 1 / !name: wakefield1
+! length Bnseg Bmpstp RFCavity beam_radius gradient frequency phase_deg name
+16.603888 1 1 103 0.0003 10907447.83 1300000000 -17.43982832 / !name: rfcavity1
+! length Bnseg Bmpstp Wakefield multiplier wake_function_file_id switch name
+0 1 1 -41 1 41 -1 / !name: wakefield2
+! length Bnseg Bmpstp Drift name
+8.5305163742 1 1 0 0.0003 / !name: drifttube2
+! length Bnseg Bmpstp Wakefield multiplier wake_function_file_id switch name
+0 1 1 -41 1 42 1 / !name: wakefield3
+! length Bnseg Bmpstp RFCavity beam_radius gradient frequency phase_deg name
+5.5346304 1 1 103 0.0003 9053035.459 3900000000 -148.9681881 / !name: rfcavity2
+! length Bnseg Bmpstp Wakefield multiplier wake_function_file_id switch name
+0 1 1 -41 1 42 -1 / !name: wakefield4
+! length Bnseg Bmpstp Drift name
+12.518616788 1 1 0 0.0003 / !name: drifttube3
+! length Bnseg Bmpstp Drift name
+7.256313209 1 1 0 0.0003 / !name: drifttube4
+! length Bnseg Bmpstp Chicane beam_radius drift_length R56 T566 U5666 angle CSR_switch SC_switch name
+0.203558243263 1 1 4 0.0003 2.44781923989 -0.079148634163993 0.105531512218657 0.09962502193 2.01 0 / !name: chicane1
+! length Bnseg Bmpstp WriteBeam name
+0 1 210 -2 1024 / !name: writebeam1
+! length Bnseg Bmpstp Drift name
+50.497160326 1 1 0 0.0002 / !name: drifttube5
+! length Bnseg Bmpstp Wakefield multiplier wake_function_file_id switch name
+0 1 1 -41 1 41 1 / !name: wakefield5
+! length Bnseg Bmpstp RFCavity beam_radius gradient frequency phase_deg name
+99.623328 1 1 103 0.0002 14884059.27 1300000000 -20.75395814 / !name: rfcavity3
+! length Bnseg Bmpstp Wakefield multiplier wake_function_file_id switch name
+0 1 1 -41 1 41 -1 / !name: wakefield6
+! length Bnseg Bmpstp Drift name
+53.693543574 1 1 0 0.0002 / !name: drifttube6
+! length Bnseg Bmpstp Drift name
+23.684874436 1 1 0 0.0002 / !name: drifttube7
+! length Bnseg Bmpstp Chicane beam_radius drift_length R56 T566 U5666 angle CSR_switch SC_switch name
+0.549165215621 1 1 4 0.0002 9.86910678674 -0.059542132248146 0.0793895096641947 0.05588589286 2.01 0 / !name: chicane2
+! length Bnseg Bmpstp Drift name
+34.162976438 1 1 0 0.0002 / !name: drifttube8
+! length Bnseg Bmpstp WriteBeam name
+0 1 212 -2 1024 / !name: writebeam2
+! length Bnseg Bmpstp Wakefield multiplier wake_function_file_id switch name
+0 1 1 -41 1 41 1 / !name: wakefield7
+! length Bnseg Bmpstp RFCavity beam_radius gradient frequency phase_deg name
+166.038878 1 1 103 0.0002 15300378.91 1300000000 0.07099703584 / !name: rfcavity4
+! length Bnseg Bmpstp Wakefield multiplier wake_function_file_id switch name
+0 1 1 -41 1 41 -1 / !name: wakefield8
+! length Bnseg Bmpstp Drift name
+100.187336314 1 1 0 0.0002 / !name: drifttube9
+! length Bnseg Bmpstp Drift name
+193.468002 1 1 0 0.0002 / !name: drifttube10
+! length Bnseg Bmpstp Wakefield multiplier wake_function_file_id switch name
+0 1 1 -41 24 46 1 / !name: wakefield9
+! length Bnseg Bmpstp Drift name
+1 1 1 0 1 / !name: drifttube11
+! length Bnseg Bmpstp Wakefield multiplier wake_function_file_id switch name
+0 1 1 -41 1 46 -1 / !name: wakefield10
+! length Bnseg Bmpstp Drift name
+80.329601 1 1 0 0.0002 / !name: drifttube12
+! length Bnseg Bmpstp Drift name
+97.748578593 1 1 0 0.0002 / !name: drifttube13
+! length Bnseg Bmpstp WriteBeam name
+0 1 220 -2 1024 / !name: writebeam3

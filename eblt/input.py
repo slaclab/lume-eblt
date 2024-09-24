@@ -3,6 +3,9 @@ from pydantic import BaseModel, Field, model_validator
 from typing import List, Optional, Union
 from . import archive as _archive
 import h5py
+import shlex
+import pathlib
+from lume import tools as lume_tools
 
 # Define the base classes for coefficients and lattice elements
 class Parameters(BaseModel):
@@ -550,6 +553,30 @@ class EBLTInput(BaseModel):
                 f"EBLTInput instance.  Was the HDF group correct?"
             )
         return loaded
+
+
+    @property
+    def arguments(self) -> List[str]:
+        """
+        Get all of the command-line arguments for running Genesis 4.
+
+        Returns
+        -------
+        list of str
+            Individual arguments to pass to Genesis 4.
+        """
+        optional_args = []
+       
+        return [*optional_args]
+
+    def write_run_script(
+        self,
+        path: pathlib.Path,
+        command_prefix: str = "xeblt",
+    ) -> None:
+        with open(path, mode="wt") as fp:
+            print(shlex.join(shlex.split(command_prefix) + self.arguments), file=fp)
+        lume_tools.make_executable(str(path))
 
 
 def assign_names_to_elements(

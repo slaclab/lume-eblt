@@ -1,0 +1,74 @@
+ EBLT - Electron Beam Longitudinal Tracking (forward or backward): Vs1.0beta
+ Read input data from file - eblt.in:
+ flagfwd:           1
+ forward tracking...
+ isamp:          200
+ chglc:   9.9999843703497204E-011   0.0000000000000000        1.0000000000000000     
+ total charge (C):   9.9999843703497204E-011
+ pass setting up lattice...
+ enter elment (type code):            1         -39
+ zedge:    0.0000000000000000     
+ enter elment (type code):            2           0
+ zedge:    0.0000000000000000     
+ enter elment (type code):            3         -41
+ zedge:    74.974415941800004     
+ enter elment (type code):            4         103
+ zedge:    74.974415941800004     
+ enter elment (type code):            5         -41
+ zedge:    91.578303941800016     
+ enter elment (type code):            6           0
+ zedge:    91.578303941800016     
+ enter elment (type code):            7         -41
+ zedge:    100.10882031600002     
+ enter elment (type code):            8         103
+ zedge:    100.10882031600002     
+ enter elment (type code):            9         -41
+ zedge:    105.64345071600002     
+ enter elment (type code):           10           0
+ zedge:    105.64345071600002     
+ enter elment (type code):           11           0
+ zedge:    118.16206750400002     
+ enter elment (type code):           12           4
+ zedge:    125.41838071300003     
+ enter elment (type code):           13          -2
+ zedge:    125.62193895626302     
+ enter elment (type code):           14           0
+ zedge:    125.62193895626302     
+ enter elment (type code):           15         -41
+ zedge:    176.11909928226299     
+ enter elment (type code):           16         103
+ zedge:    176.11909928226299     
+ enter elment (type code):           17         -41
+ zedge:    275.74242728226301     
+ enter elment (type code):           18           0
+ zedge:    275.74242728226301     
+ enter elment (type code):           19           0
+ zedge:    329.43597085626305     
+ enter elment (type code):           20           4
+ zedge:    353.12084529226303     
+ enter elment (type code):           21           0
+ zedge:    353.67001050788400     
+ enter elment (type code):           22          -2
+ zedge:    387.83298694588399     
+ enter elment (type code):           23         -41
+ zedge:    387.83298694588399     
+ enter elment (type code):           24         103
+ zedge:    387.83298694588399     
+ enter elment (type code):           25         -41
+ zedge:    553.87186494588400     
+ enter elment (type code):           26           0
+ zedge:    553.87186494588400     
+ enter elment (type code):           27           0
+ zedge:    654.05920125988405     
+ enter elment (type code):           28         -41
+ zedge:    847.52720325988412     
+ enter elment (type code):           29           0
+ zedge:    847.52720325988412     
+ enter elment (type code):           30         -41
+ zedge:    848.52720325988412     
+ enter elment (type code):           31           0
+ zedge:    848.52720325988412     
+ enter elment (type code):           32           0
+ zedge:    928.85680425988403     
+ enter elment (type code):           33          -2
+ zedge:    1026.6053828528841     
