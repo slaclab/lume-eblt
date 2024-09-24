@@ -91,7 +91,7 @@ class EBLT(CommandWrapper):
 
     _input: EBLTInput
     output: Optional[EBLTOutput]
-    initial_particles: Optional[EBLTParticleData] = None
+    initial_particles: Optional[Union[ParticleGroup, EBLTParticleData]] = None
     fieldmaps: List[Dict] = []
 
     def __init__(
@@ -107,7 +107,6 @@ class EBLT(CommandWrapper):
         use_temp_dir: bool = True,
         verbose: bool = tools.global_display_options.verbose >= 1,
         timeout: Optional[float] = None,
-        initial_particles: Optional[Union[ParticleGroup, EBLTParticleData]] = None,
         **kwargs: Any,
     ):
         super().__init__(
@@ -121,26 +120,18 @@ class EBLT(CommandWrapper):
             timeout=timeout,
             **kwargs,
         )
-        self.original_path = workdir
+
 
         if not isinstance(input, EBLTInput):
             # We have either a string or a filename for our main input.
-            self.original_path, _ = os.path.split(input)
+            self.input_file_path, _ = os.path.split(input)
             input = EBLTInput.from_file(input)
             assign_names_to_elements(input.lattice_lines)
 
-
-        if initial_particles:
-            Ek = self._input.parameters.Ek
-            if isinstance(initial_particles, ParticleGroup):
-                self.initial_particles = EBLTParticleData.from_ParticleGroup(initial_particles, Ek)
-            else:
-                # If read from EBLT output, shift the ref energy to the one defined in input file
-                self.initial_particles = initial_particles.shift_ref_energy(Ek)
-
-
         if workdir is None:
             workdir = pathlib.Path(".")
+
+        self.original_path = workdir
 
 
         self._input = input
@@ -444,7 +435,15 @@ class EBLT(CommandWrapper):
             self.write_run_script(path)
 
     def write_initial_particles(self, path: Optional[AnyPath] = None  ) -> None:
+
         if self.initial_particles:
+            Ek = self._input.parameters.Ek
+            if isinstance(self.initial_particles, ParticleGroup):
+                self.initial_particles = EBLTParticleData.from_ParticleGroup(self.initial_particles, Ek)
+            else:
+                # If read from EBLT output, shift the ref energy to the one defined in input file
+                self.initial_particles = self.initial_particles.shift_ref_energy(Ek)
+
             self.initial_particles.write_EBLT_input(path)
             #update header
             self._input.parameters.flagdist = 100
@@ -452,7 +451,7 @@ class EBLT(CommandWrapper):
 
 
         elif self._input.parameters.flagdist in [100, 200, 300]:
-            src = os.path.join(self.original_path, 'pts.in')
+            src = os.path.join(self.input_file_path, 'pts.in')
             dest = os.path.join(path, 'pts.in')
 
             assert os.path.isfile(src), "Initial particles file not found"
@@ -482,6 +481,8 @@ class EBLT(CommandWrapper):
                 lattice_element.V1 = r
 
     def load_wakefield(self, path: Optional[AnyPath] = None) -> None:
+        # parse wakefield
+
         rec = []
         for lattice_element in self._input.lattice_lines:
             if isinstance(lattice_element, Wakefield):
@@ -489,10 +490,13 @@ class EBLT(CommandWrapper):
 
                 if file_id in rec:
                     continue
-                self.fieldmaps.append(read_fieldmap_rfdata(self.original_path, file_id))
+
+                self.fieldmaps.append(read_fieldmap_rfdata(self.input_file_path, file_id))
                 rec.append(file_id)
 
     def write_wakefield(self, path: Optional[AnyPath] = None) -> None:
+
+        self.load_wakefield(path=self.input_file_path)
 
         for fieldmap in self.fieldmaps:
 
