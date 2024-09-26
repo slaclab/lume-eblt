@@ -24,7 +24,7 @@ from .output import RunInfo
 from .fieldmap import  read_fieldmap_rfdata, write_fieldmap_rfdata
 from typing import List, Dict
 
-from .input import EBLTInput, assign_names_to_elements, DriftTube, Bend, RFCavity,Wakefield
+from .input import EBLTInput, assign_names_to_elements, DriftTube, Bend, RFCavity, Wakefield
 from .output import EBLTOutput
 from .particles import EBLTParticleData
 
@@ -277,6 +277,7 @@ class EBLT(CommandWrapper):
 
         try:
             self.output = self.load_output()
+            self.output.lattice_lines = self._input.lattice_lines
 
         except Exception as ex:
             stack = traceback.format_exc()
@@ -578,8 +579,88 @@ class EBLT(CommandWrapper):
         return EBLTOutput.from_directory(self.path)
 
 
-    def plot(self):
-        pass
+    @override
+    def plot(
+        self,
+        y: Union[str, Sequence[str]] = "kinetic_energy",
+        x="distance",
+        xlim=None,
+        ylim=None,
+        ylim2=None,
+        yscale="linear",
+        yscale2="linear",
+        y2="rms_z",
+        nice=True,
+        include_layout=True,
+        include_legend=True,
+        return_figure=False,
+        tex=False,
+        **kwargs,
+    ):
+        """
+        Plots output multiple keys.
+
+        Parameters
+        ----------
+        y : list
+            List of keys to be displayed on the Y axis
+        x : str
+            Key to be displayed as X axis
+        xlim : list
+            Limits for the X axis
+        ylim : list
+            Limits for the Y axis
+        ylim2 : list
+            Limits for the secondary Y axis
+        yscale: str
+            one of "linear", "log", "symlog", "logit", ... for the Y axis
+        yscale2: str
+            one of "linear", "log", "symlog", "logit", ... for the secondary Y axis
+        y2 : list
+            List of keys to be displayed on the secondary Y axis
+        nice : bool
+            Whether or not a nice SI prefix and scaling will be used to
+            make the numbers reasonably sized. Default: True
+        include_layout : bool
+            Whether or not to include a layout plot at the bottom. Default: True
+            Whether or not the plot should include the legend. Default: True
+        return_figure : bool
+            Whether or not to return the figure object for further manipulation.
+            Default: True
+        kwargs : dict
+            Extra arguments can be passed to the specific plotting function.
+
+        Returns
+        -------
+        fig : matplotlib.pyplot.figure.Figure
+            The plot figure for further customizations or `None` if `return_figure` is set to False.
+        """
+        if self.output is None:
+            raise RuntimeError(
+                "Genesis 4 has not yet been run; there is no output to plot."
+            )
+
+        if not tools.is_jupyter():
+            # If not in jupyter mode, return a figure by default.
+            return_figure = True
+
+        return self.output.plot(
+            y=y,
+            x=x,
+            xlim=xlim,
+            ylim=ylim,
+            ylim2=ylim2,
+            yscale=yscale,
+            yscale2=yscale2,
+            y2=y2,
+            nice=nice,
+            include_layout=include_layout,
+            include_legend=include_legend,
+            return_figure=return_figure,
+            tex=tex,
+            **kwargs,
+        )
+
 
     def stat(self, key: str):
         if self.output is None:

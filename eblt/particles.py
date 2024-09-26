@@ -5,8 +5,9 @@ from .types import AnyPath, NDArray
 from pmd_beamphysics import ParticleGroup
 from pmd_beamphysics.interfaces.impact import  impact_particles_to_particle_data
 import numpy as np
-from pmd_beamphysics.units import mec2
+from pmd_beamphysics.units import mec2, c_light
 import os
+
 
 
 def parse_impact_particles(filePath,
@@ -47,7 +48,7 @@ class EBLTParticleData(BaseModel):
     delta_e_over_e0: NDArray = Field(..., description="dE/E0")
     Ek: float = Field(None, description="Electron reference energy")
     beam_radius: float = None
-
+   
 
     @classmethod
     def from_ParticleGroup(cls, pg: ParticleGroup, Ek: float) -> "EBLTParticleData":
@@ -61,26 +62,28 @@ class EBLTParticleData(BaseModel):
         )
 
     @classmethod
-    def from_EBLT_outputfile(cls, filepath: AnyPath, Ek: float) -> "EBLTParticleData":
+    def from_EBLT_outputfile(cls, filepath: AnyPath, Ek: float = None) -> "EBLTParticleData":
         data = np.loadtxt(filepath)
         data = np.atleast_2d(data)  # Ensure the data is always a 2D array
 
         # Update delta_gamma and delta_e_over_e0 given the new Ek
 
-        print('Shifting delta_e_over_e0 and delta_gamma given Ek')
+       
 
 
         output = cls(z=data[:, 0],
             delta_gamma=data[:, 1],
             weight=data[:, 2],
             delta_e_over_e0=data[:, 3])
-
-        output.shift_ref_energy(Ek)
+        
+        if Ek:
+            output.shift_ref_energy(Ek)
 
         return output
 
 
     def shift_ref_energy(self,  Ek: float) ->None:
+        print('Shifting delta_e_over_e0 and delta_gamma given Ek')
         self.delta_gamma = self.gamma - Ek/mec2
         self.delta_e_over_e0 = self.delta_gamma /(Ek/mec2)
         self.Ek = Ek
@@ -94,13 +97,13 @@ class EBLTParticleData(BaseModel):
         return cls.from_ParticleGroup(pg, Ek)
 
 
-    def to_particlegroup_data(self) ->ParticleGroup:
+    def to_particlegroup(self) ->ParticleGroup:
         z = self.z
         gamma = self.gamma
         weight = self.weight
         n = len(z)
         pz = np.sqrt(gamma**2 - 1) * mec2
-        particlegroup_data = dict(  t=np.zeros(n),
+        particlegroup_data = dict(  t=self.z/c_light,
                                     x=np.zeros(n),
                                     px=np.zeros(n),
                                     y=np.zeros(n),
@@ -112,6 +115,9 @@ class EBLTParticleData(BaseModel):
                                     species="electron",
                                 )
         return ParticleGroup(data= particlegroup_data)
+
+    def plot(self, xkey: str, ykey:str, bins: int = 50) -> None:
+        self.to_particlegroup().plot(xkey, ykey, bins = bins)
 
 
     def write_EBLT_input(self, path: AnyPath, verbose: bool = True) -> None:

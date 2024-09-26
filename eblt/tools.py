@@ -9,11 +9,12 @@ import traceback
 
 from typing import  Union
 from .types import AnyPath, NDArray
-
+import enum
 import numpy as np
 import prettytable
 import pydantic_settings
-
+import functools
+import sys
 try:
     from typing import Literal
 except ImportError:
@@ -71,6 +72,51 @@ class DisplayOptions(
 
 global_display_options = DisplayOptions()
 
+
+class OutputMode(enum.Enum):
+    """Jupyter Notebook output support."""
+
+    unknown = "unknown"
+    plain = "plain"
+    html = "html"
+
+@functools.cache
+def get_output_mode() -> OutputMode:
+    """
+    Get the output mode for lume-genesis objects.
+
+    This works by way of interacting with IPython display and seeing what
+    choice it makes regarding reprs.
+
+    Returns
+    -------
+    OutputMode
+        The detected output mode.
+    """
+    if "IPython" not in sys.modules or "IPython.display" not in sys.modules:
+        return OutputMode.plain
+
+    from IPython.display import display
+
+    class ReprCheck:
+        mode: OutputMode = OutputMode.unknown
+
+        def _repr_html_(self) -> str:
+            self.mode = OutputMode.html
+            return "<!-- lume-genesis detected Jupyter and will use HTML for rendering. -->"
+
+        def __repr__(self) -> str:
+            self.mode = OutputMode.plain
+            return ""
+
+    check = ReprCheck()
+    display(check)
+    return check.mode
+
+
+def is_jupyter() -> bool:
+    """Is Jupyter detected?"""
+    return get_output_mode() == OutputMode.html
 
 def safe_loadtxt(filepath: AnyPath, **kwargs) -> NDArray:
     """
