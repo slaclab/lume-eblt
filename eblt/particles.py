@@ -7,6 +7,7 @@ from pmd_beamphysics.interfaces.impact import  impact_particles_to_particle_data
 import numpy as np
 from pmd_beamphysics.units import mec2, c_light
 import os
+from typing import Optional
 
 
 
@@ -46,8 +47,8 @@ class EBLTParticleData(BaseModel):
     delta_gamma: NDArray = Field(..., description="Δγ")
     weight: NDArray = Field(..., description="Particle weight")
     delta_e_over_e0: NDArray = Field(..., description="dE/E0")
-    Ek: float = Field(None, description="Electron reference energy")
-    beam_radius: float = None
+    Ek: Optional[float] = Field(None, description="Electron reference energy")
+    beam_radius: Optional[float] = None
    
 
     @classmethod

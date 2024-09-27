@@ -669,6 +669,21 @@ class EBLT(CommandWrapper):
             )
         return self.output.stat(key=key)
 
+    @property
+    def input(self) -> EBLTInput:
+        """The Genesis 4 input, including namelists and lattice information."""
+        return self._input
+
+    @input.setter
+    def input(self, inp: Any) -> None:
+        if not isinstance(inp, EBLTInput):
+            raise ValueError(
+                f"The provided input is of type {type(inp).__name__} and not `EBLTInput`. "
+                f"Please consider creating a new Genesis4 object instead with the "
+                f"new parameters!"
+            )
+        self._input = inp
+
     @override
     @staticmethod
     def input_parser(path: AnyPath) -> EBLTInput:
