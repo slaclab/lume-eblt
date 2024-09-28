@@ -6,6 +6,11 @@ import h5py
 import shlex
 import pathlib
 from lume import tools as lume_tools
+from .tools import class_key_data
+from typing_extensions import override
+from hashlib import blake2b
+import json
+from .tools import NpEncoder, update_hash
 
 # Define the base classes for coefficients and lattice elements
 class Parameters(BaseModel):
@@ -577,6 +582,17 @@ class EBLTInput(BaseModel):
         with open(path, mode="wt") as fp:
             print(shlex.join(shlex.split(command_prefix) + self.arguments), file=fp)
         lume_tools.make_executable(str(path))
+    
+    @override
+    def fingerprint(self, digest_size=16):
+        h = blake2b(digest_size=16)
+        for key in ['parameters', 'phase_space_coefficients', 'current_coefficients']:
+            keyed_data = class_key_data(getattr(self, key))
+            update_hash(keyed_data, h)
+        for element in self.lattice_lines:
+            keyed_data = class_key_data(element)
+            update_hash(keyed_data, h)
+        return h.hexdigest()
 
 
 def assign_names_to_elements(

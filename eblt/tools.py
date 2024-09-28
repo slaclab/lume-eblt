@@ -231,7 +231,22 @@ def full_path(path):
     """
     return os.path.abspath(os.path.expandvars(os.path.expanduser(path)))
 
+def class_key_data(I):
+     keyed_data = {key: value for key, value in I.__dict__.items() if not key.startswith('__') and not callable(key)}
+     return keyed_data
 
+
+def update_hash(keyed_data, h):
+    """
+    Creates a cryptographic fingerprint from keyed data.
+    Used JSON dumps to form strings, and the blake2b algorithm to hash.
+
+    """
+    for key in sorted(keyed_data.keys()):
+        val = keyed_data[key]
+        s = json.dumps(val, sort_keys=True, cls=NpEncoder).encode()
+        h.update(s)
+        
 def fingerprint(keyed_data, digest_size=16):
     """
     Creates a cryptographic fingerprint from keyed data.
