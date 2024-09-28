@@ -28,6 +28,9 @@ from .output import EBLTOutput
 from .particles import EBLTParticleData
 
 from .types import AnyPath
+import json
+import hashlib
+from .tools import NpEncoder
 
 logger = logging.getLogger(__name__)
 
@@ -714,3 +717,28 @@ class EBLT(CommandWrapper):
         if not isinstance(other, EBLT):
             return False
         return self.input != other.input or self.output != other.output
+    @override
+    def fingerprint(self, keyed_data, digest_size=16):
+        """
+        Creates a cryptographic fingerprint from keyed data.
+        Used JSON dumps to form strings, and the blake2b algorithm to hash.
+
+        Parameters
+        ----------
+        keyed_data : dict
+            dict with the keys to generate a fingerprint
+        digest_size : int, optional
+            Digest size for blake2b hash code, by default 16
+
+        Returns
+        -------
+        str
+            The hexadecimal digest
+        """
+        keyed_data = {key: value for key, value in self.__dict__.items() if not key.startswith('__') and not callable(key)}
+        h = hashlib.blake2b(digest_size=digest_size)
+        for key in sorted(keyed_data.keys()):
+            val = keyed_data[key]
+            s = json.dumps(val, sort_keys=True, cls=NpEncoder).encode()
+            h.update(s)
+        return h.hexdigest()
