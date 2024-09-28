@@ -8,7 +8,7 @@ import shlex
 import shutil
 import traceback
 from time import monotonic
-from typing import Any, ClassVar,  Optional, Union
+from typing import Any, ClassVar,  Optional, Union, Sequence
 
 import h5py
 import psutil
@@ -18,8 +18,7 @@ from pmd_beamphysics import ParticleGroup
 from typing_extensions import override
 
 from . import tools
-#from ..errors import EBLTRunFailure
-#from . import parsers
+
 from .output import RunInfo
 from .fieldmap import  read_fieldmap_rfdata, write_fieldmap_rfdata
 from typing import List, Dict
