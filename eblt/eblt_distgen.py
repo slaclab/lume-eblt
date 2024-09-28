@@ -113,7 +113,7 @@ def evaluate_eblt_with_distgen(eblt_config: Union[str, Dict],
 
     # Recreate Generator object for fingerprint, proper archiving
 
-    G = Generator(I.distgen_input)
+    G = Generator(distgen_input_file)
 
     fingerprint = fingerprint_eblt_with_distgen(I, G)
     output['fingerprint'] = fingerprint

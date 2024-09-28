@@ -95,7 +95,7 @@ class EBLT(CommandWrapper):
 
     def __init__(
         self,
-        input: Union[EBLTInput, str, pathlib.Path],
+        input: Optional[Union[EBLTInput, str, pathlib.Path]] = None,
         *,
         workdir: Optional[Union[str, pathlib.Path]] = None,
         output: Optional[EBLTOutput] = None,
@@ -121,11 +121,12 @@ class EBLT(CommandWrapper):
         )
 
 
-        if not isinstance(input, EBLTInput):
-            # We have either a string or a filename for our main input.
-            self.input_file_path, _ = os.path.split(input)
-            input = EBLTInput.from_file(input)
-            assign_names_to_elements(input.lattice_lines)
+        if input:
+            if not isinstance(input, EBLTInput):
+                # We have either a string or a filename for our main input.
+                self.input_file_path, _ = os.path.split(input)
+                input = EBLTInput.from_file(input)
+                assign_names_to_elements(input.lattice_lines)
 
         if workdir is None:
             workdir = pathlib.Path(".")
@@ -442,11 +443,12 @@ class EBLT(CommandWrapper):
                 self.initial_particles = EBLTParticleData.from_ParticleGroup(self.initial_particles, Ek)
             else:
                 # If read from EBLT output, shift the ref energy to the one defined in input file
-                self.initial_particles = self.initial_particles.shift_ref_energy(Ek)
+                self.initial_particles.shift_ref_energy(Ek)
 
             self.initial_particles.write_EBLT_input(path)
             #update header
             self._input.parameters.flagdist = 100
+            self._input.parameters.np = self.initial_particles.np
 
 
 

@@ -48,6 +48,7 @@ class EBLTParticleData(BaseModel):
     weight: NDArray = Field(..., description="Particle weight")
     delta_e_over_e0: NDArray = Field(..., description="dE/E0")
     Ek: Optional[float] = Field(None, description="Electron reference energy")
+    np: int = Field(..., description = "Number of macroparticles")
     beam_radius: Optional[float] = None
    
 
@@ -59,11 +60,12 @@ class EBLTParticleData(BaseModel):
             delta_e_over_e0 = (pg['energy'] - Ek)/Ek,
             weight = pg.weight,
             Ek = Ek,
-            beam_radius = np.sqrt(pg['sigma_x']**2 + pg['sigma_y']**2)
+            beam_radius = np.sqrt(pg['sigma_x']**2 + pg['sigma_y']**2),
+            np = len(pg.z)
         )
 
     @classmethod
-    def from_EBLT_outputfile(cls, filepath: AnyPath, Ek: float = None) -> "EBLTParticleData":
+    def from_EBLT_outputfile(cls, filepath: AnyPath, Ek: Optional[float] = None) -> "EBLTParticleData":
         data = np.loadtxt(filepath)
         data = np.atleast_2d(data)  # Ensure the data is always a 2D array
 
@@ -75,7 +77,8 @@ class EBLTParticleData(BaseModel):
         output = cls(z=data[:, 0],
             delta_gamma=data[:, 1],
             weight=data[:, 2],
-            delta_e_over_e0=data[:, 3])
+            delta_e_over_e0=data[:, 3],
+            np = data.shape[0])
         
         if Ek:
             output.shift_ref_energy(Ek)

@@ -14,11 +14,9 @@ def default_eblt_merit(I: EBLT):
         m = {'error': False}
 
     # Gather stat output
-    for k in dir(I.output.stats):
-        if k == 'units':
-            continue
-        else:
-            m['end_' + k] = getattr(I.output.stats, k)[-1]
+    stats_keys = ['kinetic_energy', 'gamma', 'mean_z', 'rms_z' , 'mean_delta_gamma', 'rms_delta_gamma']
+    for k in stats_keys:
+        m['end_' + k] = getattr(I.output.stats, k)[-1]
 
     m['run_time'] = I.output.run.run_time
 
