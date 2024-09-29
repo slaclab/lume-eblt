@@ -1,7 +1,7 @@
 from .tools import safe_loadtxt
 import numpy as np
 import os
-from .types import AnyPath, NDArray
+from .types import AnyPath
 from typing import Dict
 def read_fieldmap_rfdata(Path: AnyPath, file_id: float) -> Dict:
     """

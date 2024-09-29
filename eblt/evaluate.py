@@ -1,14 +1,14 @@
-import numpy as np
+
 from .run import EBLT
 
-def default_eblt_merit(I: EBLT):
+def default_eblt_merit(E: EBLT):
     """
-    merit function to operate on an evaluated LUME-Impact object I.
+    merit function to operate on an evaluated LUME-EBLT object E.
 
     Returns dict of scalar values
     """
     # Check for error
-    if I.output.run.error:
+    if E.output.run.error:
         return {'error': True}
     else:
         m = {'error': False}
@@ -16,12 +16,12 @@ def default_eblt_merit(I: EBLT):
     # Gather stat output
     stats_keys = ['kinetic_energy', 'gamma', 'mean_z', 'rms_z' , 'mean_delta_gamma', 'rms_delta_gamma']
     for k in stats_keys:
-        m['end_' + k] = getattr(I.output.stats, k)[-1]
+        m['end_' + k] = getattr(E.output.stats, k)[-1]
 
-    m['run_time'] = I.output.run.run_time
+    m['run_time'] = E.output.run.run_time
 
-    P = I.output.particle_distributions[201].to_particlegroup()
-    P_init = I.output.particle_distributions[101].to_particlegroup()
+    P = E.output.particle_distributions[201].to_particlegroup()
+    P_init = E.output.particle_distributions[101].to_particlegroup()
 
     # All impact particles read back have status==1
     #

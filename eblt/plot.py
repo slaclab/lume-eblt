@@ -1,7 +1,7 @@
 from __future__ import annotations
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-from typing import List, Union, Tuple, Optional
+from typing import List, Union, Tuple, Optional, Sequence, Any
 from pmd_beamphysics.labels import mathlabel
 from pmd_beamphysics.units import nice_array, nice_scale_prefix
 import matplotlib

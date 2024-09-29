@@ -9,8 +9,7 @@ from lume import tools as lume_tools
 from .tools import class_key_data
 from typing_extensions import override
 from hashlib import blake2b
-import json
-from .tools import NpEncoder, update_hash
+from .tools import update_hash
 
 # Define the base classes for coefficients and lattice elements
 class Parameters(BaseModel):

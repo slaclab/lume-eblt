@@ -2,9 +2,9 @@ import os
 import re
 import numpy as np
 from pydantic import BaseModel, Field, ValidationError
-from typing import Any, Sequence, Type, Union, Annotated, Optional, Dict, List
+from typing import Sequence,  Union,  Optional, Dict, List
 import pydantic
-import pydantic_core
+
 from . import archive as _archive
 import h5py
 from .types import PydanticPmdUnit, NDArray

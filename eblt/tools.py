@@ -231,8 +231,8 @@ def full_path(path):
     """
     return os.path.abspath(os.path.expandvars(os.path.expanduser(path)))
 
-def class_key_data(I):
-     keyed_data = {key: value for key, value in I.__dict__.items() if not key.startswith('__') and not callable(key)}
+def class_key_data(E):
+     keyed_data = {key: value for key, value in E.__dict__.items() if not key.startswith('__') and not callable(key)}
      return keyed_data
 
 

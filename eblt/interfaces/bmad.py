@@ -1,4 +1,4 @@
-  from eblt.input import RFCavity, Bend, DriftTube, Exit, WriteBeam
+from eblt.input import RFCavity, Bend, DriftTube, Exit, WriteBeam
 
 
 def eblt_element_from_tao(tao, ele_id, beam_radius=0.001):

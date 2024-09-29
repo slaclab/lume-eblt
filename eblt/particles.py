@@ -1,6 +1,5 @@
 from pydantic import BaseModel
-import h5py
-from pydantic import BaseModel, Field
+from pydantic import Field
 from .types import AnyPath, NDArray
 from pmd_beamphysics import ParticleGroup
 from pmd_beamphysics.interfaces.impact import  impact_particles_to_particle_data

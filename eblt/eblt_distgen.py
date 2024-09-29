@@ -24,15 +24,15 @@ def run_eblt_with_distgen(eblt_config: Union[str, Dict],
 
     # setup objects
     if isinstance(eblt_config, str):
-        I = EBLT.from_yaml(eblt_config)
+        E = EBLT.from_yaml(eblt_config)
     else:
-        I = EBLT(**eblt_config)
+        E = EBLT(**eblt_config)
 
     if workdir:
-        I._workdir = workdir  # TODO: fix in LUME-Base
-        I.configure()  # again
+        E._workdir = workdir  # TODO: fix in LUME-Base
+        E.configure()  # again
 
-    I.verbose = verbose
+    E.verbose = verbose
     G = Generator(distgen_input_file)
     G.verbose = verbose
 
@@ -50,15 +50,15 @@ def run_eblt_with_distgen(eblt_config: Union[str, Dict],
                     print(f'Setting impact {key} = {val}')
                 if key.startswith('parameters:'):
                     key = key[len('parameters:'):]
-                    setattr(I.input.parameters, key, val)
+                    setattr(E.input.parameters, key, val)
                 elif key == 'phase_space_coefficients':
-                    I.input.phase_space_coefficients.coefficients = val
+                    E.input.phase_space_coefficients.coefficients = val
                 elif key == 'current_coefficients':
-                    I.input.phase_space_coefficients.coefficients = val
+                    E.input.phase_space_coefficients.coefficients = val
                 else:
                     # Assume lattice
                     key = key.split(':')
-                    for element in I.input.lattice_lines:
+                    for element in E.input.lattice_lines:
                         if element.name == key[0]:
                             setattr(element, key[1], val)
 
@@ -67,11 +67,11 @@ def run_eblt_with_distgen(eblt_config: Union[str, Dict],
     P = G.particles
 
     # Attach particles
-    I.initial_particles = P
+    E.initial_particles = P
 
-    I.run()
+    E.run()
 
-    return I
+    return E
 
 
 
@@ -97,16 +97,16 @@ def evaluate_eblt_with_distgen(eblt_config: Union[str, Dict],
 
     """
 
-    I = run_eblt_with_distgen(settings=settings,
+    E = run_eblt_with_distgen(settings=settings,
                                 distgen_input_file=distgen_input_file,
                                 eblt_config=eblt_config,
                                 workdir=workdir,
                                 verbose=verbose)
 
     if merit_f:
-        output = merit_f(I)
+        output = merit_f(E)
     else:
-        output = default_eblt_merit(I)
+        output = default_eblt_merit(E)
 
     if 'error' in output and output['error']:
         raise ValueError('run_impact_with_distgen returned error in output')
@@ -115,7 +115,7 @@ def evaluate_eblt_with_distgen(eblt_config: Union[str, Dict],
 
     G = Generator(distgen_input_file)
 
-    fingerprint = fingerprint_eblt_with_distgen(I, G)
+    fingerprint = fingerprint_eblt_with_distgen(E, G)
     output['fingerprint'] = fingerprint
 
     if archive_path:
@@ -125,7 +125,7 @@ def evaluate_eblt_with_distgen(eblt_config: Union[str, Dict],
         output['archive'] = archive_file
 
         # Call the composite archive method
-        archive_eblt_with_distgen(I, G, archive_file=archive_file)
+        archive_eblt_with_distgen(E, G, archive_file=archive_file)
 
     return output
 
