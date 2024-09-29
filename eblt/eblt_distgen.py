@@ -48,7 +48,7 @@ def run_eblt_with_distgen(eblt_config: Union[str, Dict],
                 # Assume EBLT
                 if verbose:
                     print(f'Setting impact {key} = {val}')
-                if key.startwith('parameters:'):
+                if key.startswith('parameters:'):
                     key = key[len('parameters:'):]
                     setattr(I.input.parameters, key, val)
                 elif key == 'phase_space_coefficients':

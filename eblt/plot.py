@@ -115,7 +115,7 @@ def plot_lattice_lines(
     ax.set_ylim(0, 2)
     ax.set_xlabel("Distance (m)")
     ax.set_yticks([])  # Hide y-axis ticks
-    ax.set_title("Lattice Layout")
+    ax.set_title("Lattice Layout", fontsize = 8)
 
 def plot_stats_with_layout(
     output: EBLTOutput,

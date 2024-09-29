@@ -163,13 +163,13 @@ class Chicane(BaseModel):
         return cls(
             length=lattice_element.length,
             beam_radius=lattice_element.V[0],
-            drift_length=lattice_element.V[1],
-            R56=lattice_element.V[2] if len(lattice_element.V) > 2 else None,
-            T566=lattice_element.V[3] if len(lattice_element.V) > 3 else None,
-            U5666=lattice_element.V[4] if len(lattice_element.V) > 4 else None,
-            angle=lattice_element.V[5],
-            CSR_switch=lattice_element.V[6] if len(lattice_element.V) > 6 else None,
-            SC_switch=lattice_element.V[7] if len(lattice_element.V) > 7 else None,
+            drift_length=lattice_element.V[1] if len(lattice_element.V) > 2 else None,     #From Manual it seems that R56t and drift length share V
+            R56=lattice_element.V[1] if len(lattice_element.V) > 2 else None,
+            T566=lattice_element.V[2] if len(lattice_element.V) > 2 else None,
+            U5666=lattice_element.V[3] if len(lattice_element.V) > 3 else None,
+            angle=lattice_element.V[4],
+            CSR_switch=lattice_element.V[5] if len(lattice_element.V) > 5 else None,
+            SC_switch=lattice_element.V[6] if len(lattice_element.V) > 6 else None,
             name=lattice_element.name,
         )
 
@@ -177,7 +177,7 @@ class Chicane(BaseModel):
         V = [
             self.beam_radius,
             self.drift_length,
-            self.R56 or 0,
+            #self.R56 or 0,
             self.T566 or 0,
             self.U5666 or 0,
             self.angle,
