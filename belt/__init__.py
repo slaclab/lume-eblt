@@ -6,6 +6,6 @@ except ImportError:
     __version__ = "0.0.0"
 
 __all__ = [
-    "Belt",
+    "BELT",
     "global_display_options",
 ]

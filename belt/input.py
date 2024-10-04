@@ -297,7 +297,7 @@ class ChangeEnergySpread(BaseModel):
             Bnseg=1,
             Bmpstp=1,
             Btype=-38,
-            V=[self.energy_increment],
+            V=[self.energy_spread_increment],
             name=self.name,
         )
 
@@ -360,7 +360,7 @@ class BELTInput(BaseModel):
     )
     lattice_lines: List[
         Union[
-            DriftTube, Bend, Chicane, RFCavity, WriteBeam, ChangeEnergy,  Wakefield, Exit
+            DriftTube, Bend, Chicane, RFCavity, WriteBeam, ChangeEnergy, ChangeEnergySpread, Wakefield, Exit
         ]
     ] = Field(..., description="List of lattice elements")
 
@@ -381,7 +381,7 @@ class BELTInput(BaseModel):
     def parse_lattice_element(
         cls, lattice_values: List[float], name: Optional[str]
     ) -> Union[
-        Bend, Chicane, DriftTube, RFCavity, WriteBeam, ChangeEnergy, Wakefield, Exit
+        Bend, Chicane, DriftTube, RFCavity, WriteBeam, ChangeEnergy, ChangeEnergySpread, Wakefield, Exit
     ]:
         lattice_element = LatticeElement(
             length=lattice_values[0],
@@ -608,7 +608,7 @@ class BELTInput(BaseModel):
     
     @override
     def fingerprint(self, digest_size=16):
-        h = blake2b(digest_size=16)
+        h = blake2b(digest_size=digest_size)
         for key in ['parameters', 'phase_space_coefficients', 'current_coefficients']:
             keyed_data = class_key_data(getattr(self, key))
             update_hash(keyed_data, h)
@@ -621,7 +621,7 @@ class BELTInput(BaseModel):
 def assign_names_to_elements(
     lattice_lines: List[
         Union[
-            Bend, Chicane, DriftTube, RFCavity, WriteBeam, ChangeEnergy, ChangeEnergySpread,Wakefield, Exit
+            Bend, Chicane, DriftTube, RFCavity, WriteBeam, ChangeEnergy, ChangeEnergySpread, Wakefield, Exit
         ]
     ],
 ):
