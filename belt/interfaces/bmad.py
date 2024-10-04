@@ -1,7 +1,7 @@
-from eblt.input import RFCavity, Bend, DriftTube, Exit, WriteBeam
+from belt.input import RFCavity, Bend, DriftTube, Exit, WriteBeam
 
 
-def eblt_element_from_tao(tao, ele_id, beam_radius=0.001):
+def belt_element_from_tao(tao, ele_id, beam_radius=0.001):
     head = tao.ele_head(ele_id)
     attrs = tao.ele_gen_attribs(ele_id)
     name = head["name"]
@@ -38,12 +38,12 @@ def eblt_element_from_tao(tao, ele_id, beam_radius=0.001):
     return ele
 
 
-def eblt_lattice_from_tao(tao):
+def belt_lattice_from_tao(tao):
     ixs = tao.lat_list("*", "ele.ix_ele")
     eles = []
 
     for ele_id in ixs:
-        ele = eblt_element_from_tao(tao, ele_id)
+        ele = belt_element_from_tao(tao, ele_id)
         if ele is None:
             continue
         eles.append(ele)

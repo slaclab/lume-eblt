@@ -8,23 +8,25 @@ import shlex
 import shutil
 import traceback
 from time import monotonic
-from typing import Any, ClassVar, Dict, Optional, Union
+from typing import Any, ClassVar, Optional, Union, Sequence
 
 import h5py
 import psutil
 from lume import tools as lume_tools
 from lume.base import CommandWrapper
 from pmd_beamphysics import ParticleGroup
-from pmd_beamphysics.units import pmd_unit
 from typing_extensions import override
 
-from .. import tools
-from ..errors import EBLTRunFailure
-from . import parsers
-from .field import FieldFile
-from .input import EBLTInput, Lattice, MainInput
-from .output import EBLTOutput, RunInfo
-from .particles import EBLTParticleData
+from . import tools
+
+from .output import RunInfo
+from .fieldmap import read_fieldmap_rfdata, write_fieldmap_rfdata
+from typing import List, Dict
+
+from .input import BELTInput, assign_names_to_elements, DriftTube, Bend, RFCavity, Wakefield
+from .output import BELTOutput
+from .particles import BELTParticleData
+
 from .types import AnyPath
 
 logger = logging.getLogger(__name__)
@@ -69,45 +71,42 @@ def find_workdir():
         return None
 
 
-def _make_eblt_input():
-    pass
+# def _make_belt_input():
+#    pass
 
 
-class EBLT(CommandWrapper):
+class BELT(CommandWrapper):
     """ """
 
-    COMMAND: ClassVar[str] = "xeblt"
-    COMMAND_MPI: ClassVar[str] = "xeblt-par"
+    COMMAND: ClassVar[str] = "xbelt"
+    COMMAND_MPI: ClassVar[str] = "xbelt-par"
     MPI_RUN: ClassVar[str] = find_mpirun()
     WORKDIR: ClassVar[Optional[str]] = find_workdir()
 
     # Environmental variables to search for executables
-    command_env: str = "EBLT_BIN"
-    command_mpi_env: str = "EBLT_BIN"
+    command_env: str = "BELT_BIN"
+    command_mpi_env: str = "BELT_BIN"
     original_path: AnyPath
 
-    _input: EBLTInput
-    output: Optional[EBLTOutput]
+    _input: BELTInput
+    output: Optional[BELTOutput]
+    initial_particles: Optional[Union[ParticleGroup, BELTParticleData]] = None
+    fieldmaps: List[Dict] = []
 
     def __init__(
-        self,
-        input: Optional[Union[MainInput, EBLTInput, str, pathlib.Path]] = None,
-        lattice: Union[Lattice, str, pathlib.Path] = "",
-        *,
-        workdir: Optional[Union[str, pathlib.Path]] = None,
-        output: Optional[EBLTOutput] = None,
-        alias: Optional[Dict[str, str]] = None,
-        units: Optional[Dict[str, pmd_unit]] = None,
-        command: Optional[str] = None,
-        command_mpi: Optional[str] = None,
-        use_mpi: bool = False,
-        mpi_run: str = "",
-        use_temp_dir: bool = True,
-        verbose: bool = tools.global_display_options.verbose >= 1,
-        timeout: Optional[float] = None,
-        initial_particles: Optional[Union[ParticleGroup, EBLTParticleData]] = None,
-        initial_field: Optional[FieldFile] = None,
-        **kwargs: Any,
+            self,
+            input: Optional[Union[BELTInput, str, pathlib.Path]] = None,
+            *,
+            workdir: Optional[Union[str, pathlib.Path]] = None,
+            output: Optional[BELTOutput] = None,
+            command: Optional[str] = None,
+            command_mpi: Optional[str] = None,
+            use_mpi: bool = False,
+            mpi_run: str = "",
+            use_temp_dir: bool = True,
+            verbose: bool = tools.global_display_options.verbose >= 1,
+            timeout: Optional[float] = None,
+            **kwargs: Any,
     ):
         super().__init__(
             command=command,
@@ -121,61 +120,36 @@ class EBLT(CommandWrapper):
             **kwargs,
         )
 
-        if input is None:
-            input = EBLTInput(
-                main=MainInput(),
-                lattice=Lattice(),
-                initial_particles=initial_particles,
-            )
-        elif isinstance(input, MainInput):
-            input = EBLTInput.from_main_input(
-                main=input,
-                lattice=lattice,
-                source_path=pathlib.Path(workdir or "."),
-            )
-        elif not isinstance(input, EBLTInput):
-            # We have either a string or a filename for our main input.
-            workdir, input = _make_eblt_input(
-                input,
-                lattice,
-                source_path=workdir,
-            )
-
-        if (
-            input.initial_particles is not initial_particles
-            and initial_particles is not None
-        ):
-            input.initial_particles = initial_particles
-
-        if input.initial_field is not initial_field and initial_field is not None:
-            input.initial_field = initial_field
+        if input:
+            if not isinstance(input, BELTInput):
+                # We have either a string or a filename for our main input.
+                self.input_file_path, _ = os.path.split(input)
+                input = BELTInput.from_file(input)
+                assign_names_to_elements(input.lattice_lines)
 
         if workdir is None:
             workdir = pathlib.Path(".")
 
         self.original_path = workdir
+
         self._input = input
         self.output = output
-
-        # Internal
-        self._units = dict(units or parsers.known_unit)
-        self._alias = dict(alias or {})
 
         # MPI
         self.nproc = 1
         self.nnode = 1
 
     @property
-    def input(self) -> EBLTInput:
-        """EBLT input"""
+    def input(self) -> BELTInput:
+        """BELT input"""
         return self._input
 
     @input.setter
     def input(self, inp: Any) -> None:
-        if not isinstance(inp, EBLTInput):
+        if not isinstance(inp, BELTInput):
             raise ValueError(
-                f"The provided input is of type {type(inp).__name__} and not `EBLTInput`. "
-                f"Please consider creating a new EBLT object instead with the "
+                f"The provided input is of type {type(inp).__name__} and not `BELTInput`. "
+                f"Please consider creating a new BELT object instead with the "
                 f"new parameters!"
             )
         self._input = inp
@@ -211,30 +185,25 @@ class EBLT(CommandWrapper):
 
     @override
     def run(
-        self,
-        load_particles: bool = False,
-        raise_on_error: bool = True,
-    ) -> EBLTOutput:
+            self,
+            load_particles: bool = False,
+            raise_on_error: bool = True,
+    ) -> BELTOutput:
         """
-        Execute EBLT 4 with the configured input settings.
+        Execute BELT with the configured input settings.
 
         Parameters
         ----------
-        load_fields : bool, default=False
-            After execution, load all field files.
         load_particles : bool, default=False
             After execution, load all particle files.
-        smear : bool, default=True
-            If set, for particles, this will smear the phase over the sample
-            (skipped) slices, preserving the modulus.
         raise_on_error : bool, default=True
-            If EBLT 4 fails to run, raise an error. Depending on the error,
+            If BELT fails to run, raise an error. Depending on the error,
             output information may still be accessible in the ``.output``
             attribute.
 
         Returns
         -------
-        EBLTOutput
+        BELTOutput
             The output data.  This is also accessible as ``.output``.
         """
         if not self.configured:
@@ -248,7 +217,7 @@ class EBLT(CommandWrapper):
         runscript = self.get_run_script()
 
         start_time = monotonic()
-        self.vprint(f"Running EBLT in {self.path}")
+        self.vprint(f"Running BELT in {self.path}")
         self.vprint(runscript)
 
         self.write_input()
@@ -256,7 +225,7 @@ class EBLT(CommandWrapper):
         if self.timeout:
             self.vprint(
                 f"Timeout of {self.timeout} is being used; output will be "
-                f"displaye after EBLT exits."
+                f"displaye after BELT exits."
             )
             execute_result = tools.execute2(
                 shlex.split(runscript),
@@ -271,7 +240,7 @@ class EBLT(CommandWrapper):
                     self.vprint(line, end="")
                     log.append(line)
             except Exception as ex:
-                log.append(f"EBLT exited with an error: {ex}")
+                log.append(f"BELT exited with an error: {ex}")
                 self.vprint(log[-1])
                 execute_result = {
                     "log": "".join(log),
@@ -303,6 +272,7 @@ class EBLT(CommandWrapper):
 
         try:
             self.output = self.load_output()
+            self.output.lattice_lines = self._input.lattice_lines
 
         except Exception as ex:
             stack = traceback.format_exc()
@@ -310,18 +280,18 @@ class EBLT(CommandWrapper):
             run_info.error_reason = (
                 f"Failed to load output file. {ex.__class__.__name__}: {ex}\n{stack}"
             )
-            self.output = EBLTOutput(run=run_info)
+            self.output = BELTOutput(run=run_info)
             if hasattr(ex, "add_note"):
                 # Python 3.11+
                 ex.add_note(
-                    f"\nEBLT output was:\n\n{execute_result['log']}\n(End of EBLT output)"
+                    f"\nBELT output was:\n\n{execute_result['log']}\n(End of BELT output)"
                 )
             if raise_on_error:
                 raise
 
         self.output.run = run_info
         if run_info.error and raise_on_error:
-            raise EBLTRunFailure(f"EBLT failed to run: {run_info.error_reason}")
+            raise Exception(f"BELT failed to run: {run_info.error_reason}")
 
         return self.output
 
@@ -415,9 +385,9 @@ class EBLT(CommandWrapper):
 
     @override
     def write_input(
-        self,
-        path: Optional[AnyPath] = None,
-        write_run_script: bool = True,
+            self,
+            path: Optional[AnyPath] = None,
+            write_run_script: bool = True,
     ):
         """
         Write the input parameters into the file.
@@ -437,22 +407,104 @@ class EBLT(CommandWrapper):
             raise ValueError("Path has not yet been set; cannot write input.")
 
         path = pathlib.Path(path)
-        self.input.write(workdir=path)
+
+        # write wakefield
+        self.write_wakefield(path)
+
+        # write initial particles
+        self.write_initial_particles(path)
+
+        # Todo:  update beam radius
+        #  update beam radius given an external function
+        # self.update_beam_radius(r, name)
+
+        # write main input file
+        filename = os.path.join(path, 'belt.in')
+        self.input.to_file(filename=filename)
+
+        # write run script
         if write_run_script:
             self.write_run_script(path)
 
-    @property
-    @override
-    def initial_particles(self) -> Optional[Union[ParticleGroup, EBLTParticleData]]:
-        """Initial particles, if defined.  Property is alias for `.input.main.initial_particles`."""
-        return self.input.initial_particles
+    def write_initial_particles(self, path: Optional[AnyPath] = None) -> None:
 
-    @initial_particles.setter
-    def initial_particles(
-        self,
-        value: Optional[Union[ParticleGroup, EBLTParticleData]],
-    ) -> None:
-        self.input.initial_particles = value
+        if self.initial_particles:
+            Ek = self._input.parameters.Ek
+            if isinstance(self.initial_particles, ParticleGroup):
+                self.initial_particles = BELTParticleData.from_ParticleGroup(self.initial_particles, Ek)
+            else:
+                # If read from BELT output, shift the ref energy to the one defined in input file
+                self.initial_particles.shift_ref_energy(Ek)
+
+            self.initial_particles.write_BELT_input(path)
+            # update header
+            self._input.parameters.flagdist = 100
+            self._input.parameters.np = self.initial_particles.np
+
+
+
+        elif self._input.parameters.flagdist in [100, 200, 300]:
+            src = os.path.join(self.input_file_path, 'pts.in')
+            dest = os.path.join(path, 'pts.in')
+
+            assert os.path.isfile(src), "Initial particles file not found"
+
+            # Don't worry about overwriting in temporary directories
+            if self._tempdir and os.path.exists(dest):
+                os.remove(dest)
+
+            if not os.path.exists(dest):
+                shutil.copyfile(src, dest)
+                # writers.write_input_particles_from_file(src, dest, self.header['Np'])
+            else:
+                self.vprint('pts.in already exits, will not overwrite.')
+
+    def update_ref_energy(self, Ek: float) -> None:
+        print("Updating Ek in the header and shifting the ref energy in particles.\n")
+        print("Warning: The lattice parameters may need to be updated with the new ref energy")
+
+        self._input.parameters.Ek = Ek
+        self.initial_particles.shift_ref_energy(Ek)
+
+    def update_beam_radius(self, r: float, name: str) -> None:
+        print('Updating beam radius in the lattice element ', name, ' to be ', r)
+        for lattice_element in self._input.lattice_lines:
+            if (isinstance(lattice_element, DriftTube) or
+                isinstance(lattice_element, Bend) or
+                isinstance(lattice_element, RFCavity)) and lattice_element.name == name:
+                lattice_element.V1 = r
+
+    def load_wakefield(self, path: Optional[AnyPath] = None) -> None:
+        # parse wakefield
+
+        rec = []
+        for lattice_element in self._input.lattice_lines:
+            if isinstance(lattice_element, Wakefield):
+                file_id = lattice_element.wake_function_file_id
+
+                if file_id in rec:
+                    continue
+
+                self.fieldmaps.append(read_fieldmap_rfdata(self.input_file_path, file_id))
+                rec.append(file_id)
+
+    def write_wakefield(self, path: Optional[AnyPath] = None) -> None:
+
+        self.load_wakefield(path=self.input_file_path)
+
+        for fieldmap in self.fieldmaps:
+
+            dest = os.path.join(path, fieldmap['info']['filename'])
+
+            # Don't worry about overwriting in temporary directories
+            if self._tempdir and os.path.exists(dest):
+                os.remove(dest)
+
+            if not os.path.exists(dest):
+                write_fieldmap_rfdata(dest, fieldmap)
+
+            else:
+                self.vprint(fieldmap['info']['filename'] + ' already exits, will not overwrite.')
 
     def _archive(self, h5: h5py.Group):
         self.input.archive(h5.create_group("input"))
@@ -477,14 +529,12 @@ class EBLT(CommandWrapper):
     to_hdf5 = archive
 
     def _load_archive(self, h5: h5py.Group):
-        raise NotImplementedError
-        # self.input = Genesis4Input.from_archive(h5["input"])
-        # if "output" in h5:
-        #    self.output = Genesis4Output.from_archive(h5["output"])
-        # else:
-        #    self.output = None
+        self.input = BELTInput.from_archive(h5["input"])
+        if "output" in h5:
+            self.output = BELTOutput.from_archive(h5["output"])
+        else:
+            self.output = None
 
-    #
     @override
     def load_archive(self, arch: Union[AnyPath, h5py.Group]) -> None:
         """
@@ -502,7 +552,7 @@ class EBLT(CommandWrapper):
 
     @override
     @classmethod
-    def from_archive(cls, arch: Union[AnyPath, h5py.Group]) -> EBLT:
+    def from_archive(cls, arch: Union[AnyPath, h5py.Group]) -> BELT:
         """
         Create a new Genesis4 object from an archive file.
 
@@ -515,18 +565,116 @@ class EBLT(CommandWrapper):
         return inst
 
     @override
-    def load_output(self) -> EBLTOutput:
-        pass
+    def load_output(self) -> BELTOutput:
+        return BELTOutput.from_directory(self.path)
 
-    def plot(self):
-        pass
+    @override
+    def plot(
+            self,
+            y: Union[str, Sequence[str]] = "kinetic_energy",
+            x="distance",
+            xlim=None,
+            ylim=None,
+            ylim2=None,
+            yscale="linear",
+            yscale2="linear",
+            y2="rms_z",
+            nice=True,
+            include_layout=True,
+            include_legend=True,
+            return_figure=False,
+            tex=False,
+            **kwargs,
+    ):
+        """
+        Plots output multiple keys.
 
-    def stat(self):
-        pass
+        Parameters
+        ----------
+        y : list
+            List of keys to be displayed on the Y axis
+        x : str
+            Key to be displayed as X axis
+        xlim : list
+            Limits for the X axis
+        ylim : list
+            Limits for the Y axis
+        ylim2 : list
+            Limits for the secondary Y axis
+        yscale: str
+            one of "linear", "log", "symlog", "logit", ... for the Y axis
+        yscale2: str
+            one of "linear", "log", "symlog", "logit", ... for the secondary Y axis
+        y2 : list
+            List of keys to be displayed on the secondary Y axis
+        nice : bool
+            Whether or not a nice SI prefix and scaling will be used to
+            make the numbers reasonably sized. Default: True
+        include_layout : bool
+            Whether or not to include a layout plot at the bottom. Default: True
+            Whether or not the plot should include the legend. Default: True
+        return_figure : bool
+            Whether or not to return the figure object for further manipulation.
+            Default: True
+        kwargs : dict
+            Extra arguments can be passed to the specific plotting function.
+
+        Returns
+        -------
+        fig : matplotlib.pyplot.figure.Figure
+            The plot figure for further customizations or `None` if `return_figure` is set to False.
+        """
+        if self.output is None:
+            raise RuntimeError(
+                "Genesis 4 has not yet been run; there is no output to plot."
+            )
+
+        if not tools.is_jupyter():
+            # If not in jupyter mode, return a figure by default.
+            return_figure = True
+
+        return self.output.plot(
+            y=y,
+            x=x,
+            xlim=xlim,
+            ylim=ylim,
+            ylim2=ylim2,
+            yscale=yscale,
+            yscale2=yscale2,
+            y2=y2,
+            nice=nice,
+            include_layout=include_layout,
+            include_legend=include_legend,
+            return_figure=return_figure,
+            tex=tex,
+            **kwargs,
+        )
+
+    def stat(self, key: str):
+        if self.output is None:
+            raise RuntimeError(
+                "BELT has not yet been run; there is no output to get statistics from."
+            )
+        return self.output.stat(key=key)
+
+    @property
+    def input(self) -> BELTInput:
+        """The Genesis 4 input, including namelists and lattice information."""
+        return self._input
+
+    @input.setter
+    def input(self, inp: Any) -> None:
+        if not isinstance(inp, BELTInput):
+            raise ValueError(
+                f"The provided input is of type {type(inp).__name__} and not `BELTInput`. "
+                f"Please consider creating a new Genesis4 object instead with the "
+                f"new parameters!"
+            )
+        self._input = inp
 
     @override
     @staticmethod
-    def input_parser(path: AnyPath) -> MainInput:
+    def input_parser(path: AnyPath) -> BELTInput:
         """
         Invoke the specialized main input parser and returns the `MainInput`
         instance.
@@ -540,33 +688,36 @@ class EBLT(CommandWrapper):
         -------
         MainInput
         """
-        return MainInput.from_file(path)
-
-    @staticmethod
-    def lattice_parser(path: AnyPath) -> Lattice:
-        """
-        Invoke the specialized lattice input parser and returns the `Lattice`
-        instance.
-
-        Parameters
-        ----------
-        path : str or pathlib.Path
-            Path to the lattice input file.
-
-        Returns
-        -------
-        Lattice
-        """
-        return Lattice.from_file(path)
+        return BELTInput.from_file(path)
 
     @override
     def __eq__(self, other: Any) -> bool:
-        if not isinstance(other, EBLT):
+        if not isinstance(other, BELT):
             return False
         return self.input == other.input and self.output == other.output
 
     @override
     def __ne__(self, other: Any) -> bool:
-        if not isinstance(other, EBLT):
+        if not isinstance(other, BELT):
             return False
         return self.input != other.input or self.output != other.output
+
+    @override
+    def fingerprint(self, digest_size=16):
+        """
+        Creates a cryptographic fingerprint from keyed data.
+        Used JSON dumps to form strings, and the blake2b algorithm to hash.
+
+        Parameters
+        ----------
+        keyed_data : dict
+            dict with the keys to generate a fingerprint
+        digest_size : int, optional
+            Digest size for blake2b hash code, by default 16
+
+        Returns
+        -------
+        str
+            The hexadecimal digest
+        """
+        return self.input.fingerprint()

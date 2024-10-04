@@ -7,7 +7,7 @@ requires = [
 
 [project]
 authors = [
-  {name="Jingyi Tang"},
+  {name="Jingyi Tang, Christopher Mayes"},
 ]
 classifiers = [
   "Development Status :: 0.1 - Beta",
@@ -19,10 +19,10 @@ dependencies = [
   # All core dependencies must be sourced from conda (conda-forge).
   # See ``environment.yml`` for further information.
 ]
-description = "Tools for using EBLT in LUME"
+description = "Tools for using BELT in LUME"
 dynamic = [ "version" ]
 keywords = []
-name = "lume-eblt"
+name = "lume-belt"
 readme = {file = "README.md", content-type = "text/markdown"}
 requires-python = ">=3.7"
 
@@ -41,7 +41,7 @@ doc = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/slaclab/lume-eblt"
+Homepage = "https://github.com/slaclab/lume-belt"
 
 [options]
 zip_safe = false
@@ -49,7 +49,7 @@ include_package_data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = [ "eblt*", ]
+include = [ "belt*", ]
 namespaces = false
 
 [project.license]
@@ -60,10 +60,10 @@ file = "LICENSE"
 # ignore = []
 
 [tool.pytest.ini_options]
-addopts = "--cov=eblt/"
+addopts = "--cov=belt/"
 log_cli_level = "info"
 log_level = "debug"
-testpaths = ["eblt/tests"]
+testpaths = ["belt/tests"]
 
 [tool.setuptools_scm]
-version_file = "eblt/_version.py"
+version_file = "belt/_version.py"

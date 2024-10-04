@@ -1,16 +1,24 @@
 import re
 from pydantic import BaseModel, Field, model_validator
 from typing import List, Optional, Union
-
+from . import archive as _archive
+import h5py
+import shlex
+import pathlib
+from lume import tools as lume_tools
+from .tools import class_key_data
+from typing_extensions import override
+from hashlib import blake2b
+from .tools import update_hash
 
 # Define the base classes for coefficients and lattice elements
 class Parameters(BaseModel):
-    np: int = Field(..., description="Number of points in the longitudinal grid")
-    nz: int = Field(..., description="Number of points in the transverse grid")
+    np: int = Field(..., description="Number of macroparticles")
+    nz: int = Field(..., description="Number of longitudinal grid poisnts")
     zmin: float = Field(..., description="Minimum z-coordinate (m)")
     zmax: float = Field(..., description="Maximum z-coordinate (m)")
     flagfwd: int = Field(..., description="Flag for forward tracking")
-    flagdist: int = Field(..., description="Flag for distance measurement")
+    flagdist: int = Field(..., description="Switch for different type of initial distributions")
     Iavg: float = Field(..., description="Average current (A)")
     Ek: float = Field(..., description="Kinetic energy (eV)")
     mass: float = Field(..., description="Mass (MeV/c^2)")
@@ -154,13 +162,13 @@ class Chicane(BaseModel):
         return cls(
             length=lattice_element.length,
             beam_radius=lattice_element.V[0],
-            drift_length=lattice_element.V[1],
-            R56=lattice_element.V[2] if len(lattice_element.V) > 2 else None,
-            T566=lattice_element.V[3] if len(lattice_element.V) > 3 else None,
-            U5666=lattice_element.V[4] if len(lattice_element.V) > 4 else None,
-            angle=lattice_element.V[5],
-            CSR_switch=lattice_element.V[6] if len(lattice_element.V) > 6 else None,
-            SC_switch=lattice_element.V[7] if len(lattice_element.V) > 7 else None,
+            drift_length=lattice_element.V[1] if len(lattice_element.V) > 2 else None,     #From Manual it seems that R56t and drift length share V
+            R56=lattice_element.V[1] if len(lattice_element.V) > 2 else None,
+            T566=lattice_element.V[2] if len(lattice_element.V) > 2 else None,
+            U5666=lattice_element.V[3] if len(lattice_element.V) > 3 else None,
+            angle=lattice_element.V[4],
+            CSR_switch=lattice_element.V[5] if len(lattice_element.V) > 5 else None,
+            SC_switch=lattice_element.V[6] if len(lattice_element.V) > 6 else None,
             name=lattice_element.name,
         )
 
@@ -168,7 +176,7 @@ class Chicane(BaseModel):
         V = [
             self.beam_radius,
             self.drift_length,
-            self.R56 or 0,
+            #self.R56 or 0,
             self.T566 or 0,
             self.U5666 or 0,
             self.angle,
@@ -273,6 +281,26 @@ class ChangeEnergy(BaseModel):
         )
 
 
+class ChangeEnergySpread(BaseModel):
+    energy_spread_increment: float = Field(..., description="Energy spread increment (eV)")
+    name: Optional[str] = Field(
+        None, description="Optional name for the change energy spread element"
+    )
+
+    @classmethod
+    def from_lattice_element(cls, lattice_element: LatticeElement):
+        return cls(energy_spread_increment=lattice_element.V[0], name=lattice_element.name)
+
+    def to_lattice_element(self) -> LatticeElement:
+        return LatticeElement(
+            length=0,  # Length should always be zero
+            Bnseg=1,
+            Bmpstp=1,
+            Btype=-38,
+            V=[self.energy_spread_increment],
+            name=self.name,
+        )
+
 class Wakefield(BaseModel):
     length: float = Field(..., description="Length of the wakefield element (m)")
     multiplier: float = Field(..., description="Wakefield multiplier")
@@ -322,7 +350,7 @@ class Exit(BaseModel):
 
 
 # Define the main class for handling the input file
-class EBLTInput(BaseModel):
+class BELTInput(BaseModel):
     parameters: Parameters = Field(..., description="Simulation parameters")
     phase_space_coefficients: PhaseSpaceCoefficients = Field(
         ..., description="Phase space coefficients"
@@ -332,7 +360,7 @@ class EBLTInput(BaseModel):
     )
     lattice_lines: List[
         Union[
-            DriftTube, Bend, Chicane, RFCavity, WriteBeam, ChangeEnergy, Wakefield, Exit
+            DriftTube, Bend, Chicane, RFCavity, WriteBeam, ChangeEnergy, ChangeEnergySpread, Wakefield, Exit
         ]
     ] = Field(..., description="List of lattice elements")
 
@@ -353,7 +381,7 @@ class EBLTInput(BaseModel):
     def parse_lattice_element(
         cls, lattice_values: List[float], name: Optional[str]
     ) -> Union[
-        Bend, Chicane, DriftTube, RFCavity, WriteBeam, ChangeEnergy, Wakefield, Exit
+        Bend, Chicane, DriftTube, RFCavity, WriteBeam, ChangeEnergy, ChangeEnergySpread, Wakefield, Exit
     ]:
         lattice_element = LatticeElement(
             length=lattice_values[0],
@@ -377,6 +405,8 @@ class EBLTInput(BaseModel):
             return WriteBeam.from_lattice_element(lattice_element)
         elif lattice_element.Btype == -39:
             return ChangeEnergy.from_lattice_element(lattice_element)
+        elif lattice_element.Btype == -38:
+            return ChangeEnergySpread.from_lattice_element(lattice_element)
         elif lattice_element.Btype == -41:
             return Wakefield.from_lattice_element(lattice_element)
         elif lattice_element.Btype == -99:
@@ -385,7 +415,7 @@ class EBLTInput(BaseModel):
             raise ValueError(f"Unknown Btype: {lattice_element.Btype}")
 
     @classmethod
-    def parse_from_lines(cls, lines: List[str]) -> "EBLTInput":
+    def parse_from_lines(cls, lines: List[str]) -> "BELTInput":
         parameter_lines = []
         lattice_lines = []
 
@@ -488,6 +518,8 @@ class EBLTInput(BaseModel):
                 label_line = "! length Bnseg Bmpstp WriteBeam"
             elif isinstance(element, ChangeEnergy):
                 label_line = "! length Bnseg Bmpstp ChangeEnergy energy_increment"
+            elif isinstance(element, ChangeEnergySpread):
+                label_line = "! length Bnseg Bmpstp ChangeEnergySpread energy_spread_increment"
             elif isinstance(element, Wakefield):
                 label_line = "! length Bnseg Bmpstp Wakefield multiplier wake_function_file_id switch"
             elif isinstance(element, Exit):
@@ -511,7 +543,7 @@ class EBLTInput(BaseModel):
         return lines
 
     @classmethod
-    def from_file(cls, filename: str) -> "EBLTInput":
+    def from_file(cls, filename: str) -> "BELTInput":
         with open(filename, "r") as file:
             lines = file.readlines()
         return cls.parse_from_lines(lines)
@@ -521,11 +553,75 @@ class EBLTInput(BaseModel):
             lines = self.to_lines()
             file.write("\n".join(lines) + "\n")
 
+    def archive(self, h5: h5py.Group) -> None:
+        """
+        Dump input data into the given HDF5 group.
+
+        Parameters
+        ----------
+        h5 : h5py.Group
+            The HDF5 file in which to write the information.
+        """
+        _archive.store_in_hdf5_file(h5, self)
+
+    @classmethod
+    def from_archive(cls, h5: h5py.Group) -> "BELTInput":
+        """
+        Loads input from archived h5 file.
+
+        Parameters
+        ----------
+        h5 : str or h5py.File
+            The filename or handle on h5py.File from which to load data.
+        """
+        loaded = _archive.restore_from_hdf5_file(h5)
+        if not isinstance(loaded, BELTInput):
+            raise ValueError(
+                f"Loaded {loaded.__class__.__name__} instead of a "
+                f"BELTInput instance.  Was the HDF group correct?"
+            )
+        return loaded
+
+
+    @property
+    def arguments(self) -> List[str]:
+        """
+        Get all of the command-line arguments for running Genesis 4.
+
+        Returns
+        -------
+        list of str
+            Individual arguments to pass to Genesis 4.
+        """
+        optional_args = []
+       
+        return [*optional_args]
+
+    def write_run_script(
+        self,
+        path: pathlib.Path,
+        command_prefix: str = "xbelt",
+    ) -> None:
+        with open(path, mode="wt") as fp:
+            print(shlex.join(shlex.split(command_prefix) + self.arguments), file=fp)
+        lume_tools.make_executable(str(path))
+    
+    @override
+    def fingerprint(self, digest_size=16):
+        h = blake2b(digest_size=digest_size)
+        for key in ['parameters', 'phase_space_coefficients', 'current_coefficients']:
+            keyed_data = class_key_data(getattr(self, key))
+            update_hash(keyed_data, h)
+        for element in self.lattice_lines:
+            keyed_data = class_key_data(element)
+            update_hash(keyed_data, h)
+        return h.hexdigest()
+
 
 def assign_names_to_elements(
     lattice_lines: List[
         Union[
-            Bend, Chicane, DriftTube, RFCavity, WriteBeam, ChangeEnergy, Wakefield, Exit
+            Bend, Chicane, DriftTube, RFCavity, WriteBeam, ChangeEnergy, ChangeEnergySpread, Wakefield, Exit
         ]
     ],
 ):
@@ -536,6 +632,7 @@ def assign_names_to_elements(
         RFCavity: 1,
         WriteBeam: 1,
         ChangeEnergy: 1,
+        ChangeEnergySpread: 1,
         Wakefield: 1,
         Exit: 1,
     }
@@ -557,7 +654,7 @@ def assign_names_to_elements(
             existing_names.add(element.name)
 
 
-def test_eblt_interface():
+def test_belt_interface():
     input_lines = [
         "100 200 0.0d0 1.0d0 1 2 /",
         "1.0 0.1 0.01 0.001 /",
@@ -566,12 +663,12 @@ def test_eblt_interface():
         "1.0 10 5 4 0.5 0.5 0.1 0.0 1.01 1 / !name: test",
     ]
 
-    eblt_input = EBLTInput.parse_from_lines(input_lines)
-    output_lines = eblt_input.to_lines()
-    parsed_output = EBLTInput.parse_from_lines(output_lines)
+    belt_input = BELTInput.parse_from_lines(input_lines)
+    output_lines = belt_input.to_lines()
+    parsed_output = BELTInput.parse_from_lines(output_lines)
 
     assert (
-        parsed_output == eblt_input
+        parsed_output == belt_input
     ), "Test failed: Parsed output does not match the original input object."
 
     print("Test passed!")
