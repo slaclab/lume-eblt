@@ -281,6 +281,26 @@ class ChangeEnergy(BaseModel):
         )
 
 
+class ChangeEnergySpread(BaseModel):
+    energy_spread_increment: float = Field(..., description="Energy spread increment (eV)")
+    name: Optional[str] = Field(
+        None, description="Optional name for the change energy spread element"
+    )
+
+    @classmethod
+    def from_lattice_element(cls, lattice_element: LatticeElement):
+        return cls(energy_increment=lattice_element.V[0], name=lattice_element.name)
+
+    def to_lattice_element(self) -> LatticeElement:
+        return LatticeElement(
+            length=0,  # Length should always be zero
+            Bnseg=1,
+            Bmpstp=1,
+            Btype=-38,
+            V=[self.energy_increment],
+            name=self.name,
+        )
+
 class Wakefield(BaseModel):
     length: float = Field(..., description="Length of the wakefield element (m)")
     multiplier: float = Field(..., description="Wakefield multiplier")
@@ -330,7 +350,7 @@ class Exit(BaseModel):
 
 
 # Define the main class for handling the input file
-class EBLTInput(BaseModel):
+class BELTInput(BaseModel):
     parameters: Parameters = Field(..., description="Simulation parameters")
     phase_space_coefficients: PhaseSpaceCoefficients = Field(
         ..., description="Phase space coefficients"
@@ -340,7 +360,7 @@ class EBLTInput(BaseModel):
     )
     lattice_lines: List[
         Union[
-            DriftTube, Bend, Chicane, RFCavity, WriteBeam, ChangeEnergy, Wakefield, Exit
+            DriftTube, Bend, Chicane, RFCavity, WriteBeam, ChangeEnergy,  Wakefield, Exit
         ]
     ] = Field(..., description="List of lattice elements")
 
@@ -385,6 +405,8 @@ class EBLTInput(BaseModel):
             return WriteBeam.from_lattice_element(lattice_element)
         elif lattice_element.Btype == -39:
             return ChangeEnergy.from_lattice_element(lattice_element)
+        elif lattice_element.Btype == -38:
+            return ChangeEnergySpread.from_lattice_element(lattice_element)
         elif lattice_element.Btype == -41:
             return Wakefield.from_lattice_element(lattice_element)
         elif lattice_element.Btype == -99:
@@ -393,7 +415,7 @@ class EBLTInput(BaseModel):
             raise ValueError(f"Unknown Btype: {lattice_element.Btype}")
 
     @classmethod
-    def parse_from_lines(cls, lines: List[str]) -> "EBLTInput":
+    def parse_from_lines(cls, lines: List[str]) -> "BELTInput":
         parameter_lines = []
         lattice_lines = []
 
@@ -496,6 +518,8 @@ class EBLTInput(BaseModel):
                 label_line = "! length Bnseg Bmpstp WriteBeam"
             elif isinstance(element, ChangeEnergy):
                 label_line = "! length Bnseg Bmpstp ChangeEnergy energy_increment"
+            elif isinstance(element, ChangeEnergySpread):
+                label_line = "! length Bnseg Bmpstp ChangeEnergySpread energy_spread_increment"
             elif isinstance(element, Wakefield):
                 label_line = "! length Bnseg Bmpstp Wakefield multiplier wake_function_file_id switch"
             elif isinstance(element, Exit):
@@ -519,7 +543,7 @@ class EBLTInput(BaseModel):
         return lines
 
     @classmethod
-    def from_file(cls, filename: str) -> "EBLTInput":
+    def from_file(cls, filename: str) -> "BELTInput":
         with open(filename, "r") as file:
             lines = file.readlines()
         return cls.parse_from_lines(lines)
@@ -541,7 +565,7 @@ class EBLTInput(BaseModel):
         _archive.store_in_hdf5_file(h5, self)
 
     @classmethod
-    def from_archive(cls, h5: h5py.Group) -> "EBLTInput":
+    def from_archive(cls, h5: h5py.Group) -> "BELTInput":
         """
         Loads input from archived h5 file.
 
@@ -551,10 +575,10 @@ class EBLTInput(BaseModel):
             The filename or handle on h5py.File from which to load data.
         """
         loaded = _archive.restore_from_hdf5_file(h5)
-        if not isinstance(loaded, EBLTInput):
+        if not isinstance(loaded, BELTInput):
             raise ValueError(
                 f"Loaded {loaded.__class__.__name__} instead of a "
-                f"EBLTInput instance.  Was the HDF group correct?"
+                f"BELTInput instance.  Was the HDF group correct?"
             )
         return loaded
 
@@ -576,7 +600,7 @@ class EBLTInput(BaseModel):
     def write_run_script(
         self,
         path: pathlib.Path,
-        command_prefix: str = "xeblt",
+        command_prefix: str = "xbelt",
     ) -> None:
         with open(path, mode="wt") as fp:
             print(shlex.join(shlex.split(command_prefix) + self.arguments), file=fp)
@@ -597,7 +621,7 @@ class EBLTInput(BaseModel):
 def assign_names_to_elements(
     lattice_lines: List[
         Union[
-            Bend, Chicane, DriftTube, RFCavity, WriteBeam, ChangeEnergy, Wakefield, Exit
+            Bend, Chicane, DriftTube, RFCavity, WriteBeam, ChangeEnergy, ChangeEnergySpread,Wakefield, Exit
         ]
     ],
 ):
@@ -608,6 +632,7 @@ def assign_names_to_elements(
         RFCavity: 1,
         WriteBeam: 1,
         ChangeEnergy: 1,
+        ChangeEnergySpread: 1,
         Wakefield: 1,
         Exit: 1,
     }
@@ -629,7 +654,7 @@ def assign_names_to_elements(
             existing_names.add(element.name)
 
 
-def test_eblt_interface():
+def test_belt_interface():
     input_lines = [
         "100 200 0.0d0 1.0d0 1 2 /",
         "1.0 0.1 0.01 0.001 /",
@@ -638,12 +663,12 @@ def test_eblt_interface():
         "1.0 10 5 4 0.5 0.5 0.1 0.0 1.01 1 / !name: test",
     ]
 
-    eblt_input = EBLTInput.parse_from_lines(input_lines)
-    output_lines = eblt_input.to_lines()
-    parsed_output = EBLTInput.parse_from_lines(output_lines)
+    belt_input = BELTInput.parse_from_lines(input_lines)
+    output_lines = belt_input.to_lines()
+    parsed_output = BELTInput.parse_from_lines(output_lines)
 
     assert (
-        parsed_output == eblt_input
+        parsed_output == belt_input
     ), "Test failed: Parsed output does not match the original input object."
 
     print("Test passed!")

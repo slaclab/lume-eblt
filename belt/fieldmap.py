@@ -3,9 +3,11 @@ import numpy as np
 import os
 from .types import AnyPath
 from typing import Dict
+
+
 def read_fieldmap_rfdata(Path: AnyPath, file_id: float) -> Dict:
     """
-    Read EBLT rfdata file, which should be simple four-column ASCII data
+    Read BELT rfdata file, which should be simple four-column ASCII data
     """
 
     info = {}
@@ -29,5 +31,3 @@ def write_fieldmap_rfdata(filePath: AnyPath, fieldmap: Dict) -> None:
 
     """
     np.savetxt(filePath, fieldmap['data'])
-
-

@@ -1,5 +1,5 @@
 
 
-# LUME-EBLT
+# LUME-BELT
 
-This is a LUME Python interface to [EBLT](https://github.com/qianglbl/EBLT).
+This is a LUME Python interface to [BELT](https://github.com/qianglbl/BELT).

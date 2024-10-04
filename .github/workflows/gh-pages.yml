@@ -35,8 +35,8 @@ jobs:
       - name: Extract examples
         shell: bash -l {0}
         run: |
-          zip -r lume-eblt-examples.zip docs/examples/
-          mv lume-eblt-examples.zip ./site/assets/
+          zip -r lume-belt-examples.zip docs/examples/
+          mv lume-belt-examples.zip ./site/assets/
       - name: Upload docs artifact
         uses: actions/upload-pages-artifact@v2
         with:

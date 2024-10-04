@@ -38,7 +38,7 @@ def parse_impact_particles(filePath,
 
     return pdat
 
-class EBLTParticleData(BaseModel):
+class BELTParticleData(BaseModel):
     """
 
     """
@@ -52,7 +52,7 @@ class EBLTParticleData(BaseModel):
    
 
     @classmethod
-    def from_ParticleGroup(cls, pg: ParticleGroup, Ek: float) -> "EBLTParticleData":
+    def from_ParticleGroup(cls, pg: ParticleGroup, Ek: float) -> "BELTParticleData":
         return cls(
             z = pg.z,
             delta_gamma = pg.gamma - Ek/mec2,
@@ -64,7 +64,7 @@ class EBLTParticleData(BaseModel):
         )
 
     @classmethod
-    def from_EBLT_outputfile(cls, filepath: AnyPath, Ek: Optional[float] = None) -> "EBLTParticleData":
+    def from_BELT_outputfile(cls, filepath: AnyPath, Ek: Optional[float] = None) -> "BELTParticleData":
         data = np.loadtxt(filepath)
         data = np.atleast_2d(data)  # Ensure the data is always a 2D array
 
@@ -93,7 +93,7 @@ class EBLTParticleData(BaseModel):
 
     @classmethod
     def from_ImpactT_outputfile(cls, path: AnyPath, Ek: float,
-                                mc2: float = mec2, species: str = 'electron') -> "EBLTParticleData":
+                                mc2: float = mec2, species: str = 'electron') -> "BELTParticleData":
         tout = parse_impact_particles(path)
         data = impact_particles_to_particle_data(tout, mc2, species)
         pg = ParticleGroup(data=data)
@@ -123,7 +123,7 @@ class EBLTParticleData(BaseModel):
         self.to_particlegroup().plot(xkey, ykey, bins = bins)
 
 
-    def write_EBLT_input(self, path: AnyPath, verbose: bool = True) -> None:
+    def write_BELT_input(self, path: AnyPath, verbose: bool = True) -> None:
         data = np.vstack((self.z, self.delta_gamma, self.weight, self.delta_e_over_e0)).T
         file_path = os.path.join(path, 'pts.in')
         np.savetxt(file_path, data)

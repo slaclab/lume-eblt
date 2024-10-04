@@ -1,13 +1,13 @@
-site_name: lume-eblt
-repo_url: https://github.com/slaclab/lume-eblt
-repo_name: slaclab/lume-eblt
+site_name: lume-belt
+repo_url: https://github.com/slaclab/lume-belt
+repo_name: slaclab/lume-belt
 
 nav:
   - Home: index.md
   - Installation: installation.md
-  - eblt:
+  - belt:
       - Examples:
-          - examples/eblt_devel.ipynb
+          - examples/belt_devel.ipynb
 
 theme:
   icon:
@@ -50,8 +50,8 @@ extra:
   generator: false
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/slaclab/lume-eblt
-      name: lume-eblt
+      link: https://github.com/slaclab/lume-belt
+      name: lume-belt
 
 extra_css:
   - stylesheets/extra.css

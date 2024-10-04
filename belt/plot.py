@@ -18,7 +18,7 @@ from .input import (
     ChangeEnergy,
     Wakefield,
     Exit,
-    EBLTInput,
+    BELTInput,
 )
 
 # Define colors and shapes for different lattice elements
@@ -34,7 +34,7 @@ element_styles = {
 }
 
 if typing.TYPE_CHECKING:
-    from .output import EBLTOutput
+    from .output import BELTOutput
 
 PlotMaybeLimits = Tuple[Optional[float], Optional[float]]
 PlotLimits = Tuple[float, float]
@@ -118,7 +118,7 @@ def plot_lattice_lines(
     ax.set_title("Lattice Layout", fontsize = 8)
 
 def plot_stats_with_layout(
-    output: EBLTOutput,
+    output: BELTOutput,
     ykeys: Union[str, Sequence[str]] = "kinetic_energy",
     ykeys2: Union[str, Sequence[str]] = "rms_z",
     xkey: str = "distance",
@@ -347,5 +347,5 @@ if __name__ == "__main__":
         "0 0 -2 0.0 0.0 0.0 0.0 / !name: writebeam1",  # Example of an element without length
     ]
 
-    eblt_input = EBLTInput.parse_from_lines(input_lines)
-    plot_lattice_lines(eblt_input.lattice_lines)
+    belt_input = BELTInput.parse_from_lines(input_lines)
+    plot_lattice_lines(belt_input.lattice_lines)

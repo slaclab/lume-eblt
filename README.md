@@ -1,2 +1,2 @@
-# lume-eblt
-Tools for using EBLT in LUME
+# lume-belt
+Tools for using BELT in LUME

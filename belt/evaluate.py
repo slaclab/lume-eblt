@@ -1,9 +1,9 @@
 
-from .run import EBLT
+from .run import BELT
 
-def default_eblt_merit(E: EBLT):
+def default_belt_merit(E: BELT):
     """
-    merit function to operate on an evaluated LUME-EBLT object E.
+    merit function to operate on an evaluated LUME-BELT object E.
 
     Returns dict of scalar values
     """

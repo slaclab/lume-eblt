@@ -107,13 +107,13 @@ venv.bak/
 .mypy_cache/
 .DS_Store
 
-/eblt/_version.py
+/belt/_version.py
 docs/examples/tmp*
 
 # Don't include animations
 *.mp4
 
-/eblt/tests/artifacts
+/belt/tests/artifacts
 
 # Don't include JupyterLab language server (LSP) files:
 /.virtual_documents

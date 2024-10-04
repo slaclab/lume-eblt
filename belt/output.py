@@ -12,7 +12,7 @@ from .input import Bend, Chicane, DriftTube, RFCavity, WriteBeam, ChangeEnergy, 
 from .plot import PlotMaybeLimits, PlotLimits, plot_stats_with_layout 
 import matplotlib
 from pmd_beamphysics.units import pmd_unit
-from .particles import EBLTParticleData
+from .particles import BELTParticleData
 
 
 
@@ -39,7 +39,7 @@ class RunInfo(BaseModel):
     """
 
     error: bool = pydantic.Field(
-        default=False, description="`True` if an error occurred during the EBLT run"
+        default=False, description="`True` if an error occurred during the BELT run"
     )
     error_reason: Optional[str] = pydantic.Field(
         default=None, description="Error explanation, if `error` is set."
@@ -153,12 +153,12 @@ class CurrentProfileOutput(BaseModel):
 #        return self.gamma0 + self.delta_gamma
 
 
-# Combined EBLTOutput object
-class EBLTOutput(BaseModel):
+# Combined BELTOutput object
+class BELTOutput(BaseModel):
     units: Dict[str, PydanticPmdUnit] = pydantic.Field(default_factory=dict, repr=False)
     stats: Optional[StatsOutput] = None
     current_profiles: Dict[int, CurrentProfileOutput] = Field(default_factory=dict)
-    particle_distributions: Dict[int, EBLTParticleData] = Field(
+    particle_distributions: Dict[int, BELTParticleData] = Field(
         default_factory=dict
     )
     lattice_lines: List[Union[Bend, Chicane, DriftTube, RFCavity, WriteBeam, ChangeEnergy, Wakefield, Exit]] = None,
@@ -168,7 +168,7 @@ class EBLTOutput(BaseModel):
     )
 
     @classmethod
-    def from_directory(cls, directory: str) -> "EBLTOutput":
+    def from_directory(cls, directory: str) -> "BELTOutput":
         output = {}
         units =  dict()
        
@@ -197,7 +197,7 @@ class EBLTOutput(BaseModel):
                     
                 elif data.shape[1] == 4:  # ParticleDistributionOutput has 4 columns
                     particle_distributions[i] = (
-                        EBLTParticleData.from_EBLT_outputfile(filepath)
+                        BELTParticleData.from_BELT_outputfile(filepath)
                     )
                     #units.update(particle_distributions[i].units)
                    
@@ -308,7 +308,7 @@ class EBLTOutput(BaseModel):
         _archive.store_in_hdf5_file(h5, self)
 
     @classmethod
-    def from_archive(cls, h5: h5py.Group) -> "EBLTOutput":
+    def from_archive(cls, h5: h5py.Group) -> "BELTOutput":
         """
         Loads output from the given HDF5 group.
 
@@ -318,7 +318,7 @@ class EBLTOutput(BaseModel):
             The key to use when restoring the data.
         """
         loaded = _archive.restore_from_hdf5_file(h5)
-        if not isinstance(loaded, EBLTOutput):
+        if not isinstance(loaded, BELTOutput):
             raise ValueError(
                 f"Loaded {loaded.__class__.__name__} instead of a "
                 f"Genesis4Output instance.  Was the HDF group correct?"
@@ -331,12 +331,12 @@ class EBLTOutput(BaseModel):
 if __name__ == "__main__":
     try:
         # Load all relevant data from a directory containing the fort.* files
-        eblt_output = EBLTOutput.from_directory("path/to/your/directory")
+        belt_output = BELTOutput.from_directory("path/to/your/directory")
 
         # Access the loaded data
-        print(eblt_output.stats)
-        print(eblt_output.current_profiles)
-        print(eblt_output.particle_distributions)
+        print(belt_output.stats)
+        print(belt_output.current_profiles)
+        print(belt_output.particle_distributions)
     except ValidationError as e:
         print("Validation Error:", e)
     except ValueError as e:

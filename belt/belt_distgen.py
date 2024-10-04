@@ -2,15 +2,15 @@ from distgen import Generator
 import os
 
 
-from .run import EBLT
+from .run import BELT
 from h5py import File
-from .evaluate import  default_eblt_merit
+from .evaluate import  default_belt_merit
 from . import tools
 from typing import Optional, Dict, Union, Callable
 from .types import AnyPath
 import distgen
 
-def run_eblt_with_distgen(eblt_config: Union[str, Dict],
+def run_belt_with_distgen(belt_config: Union[str, Dict],
                           settings: Optional[Dict] = None,
                           distgen_input_file: Optional[str]=None,
                           workdir: Optional[AnyPath] = None,
@@ -23,10 +23,10 @@ def run_eblt_with_distgen(eblt_config: Union[str, Dict],
     """
 
     # setup objects
-    if isinstance(eblt_config, str):
-        E = EBLT.from_yaml(eblt_config)
+    if isinstance(belt_config, str):
+        E = BELT.from_yaml(belt_config)
     else:
-        E = EBLT(**eblt_config)
+        E = BELT(**belt_config)
 
     if workdir:
         E._workdir = workdir  # TODO: fix in LUME-Base
@@ -45,7 +45,7 @@ def run_eblt_with_distgen(eblt_config: Union[str, Dict],
                     print(f'Setting distgen {key} = {val}')
                 G[key] = val
             else:
-                # Assume EBLT
+                # Assume BELT
                 if verbose:
                     print(f'Setting impact {key} = {val}')
                 if key.startswith('parameters:'):
@@ -76,7 +76,7 @@ def run_eblt_with_distgen(eblt_config: Union[str, Dict],
 
 
 
-def evaluate_eblt_with_distgen(eblt_config: Union[str, Dict],
+def evaluate_belt_with_distgen(belt_config: Union[str, Dict],
                                settings: Optional[Dict],
                                distgen_input_file: Optional[str]=None,
                                workdir: Optional[AnyPath] = None,
@@ -97,16 +97,16 @@ def evaluate_eblt_with_distgen(eblt_config: Union[str, Dict],
 
     """
 
-    E = run_eblt_with_distgen(settings=settings,
+    E = run_belt_with_distgen(settings=settings,
                                 distgen_input_file=distgen_input_file,
-                                eblt_config=eblt_config,
+                                belt_config=belt_config,
                                 workdir=workdir,
                                 verbose=verbose)
 
     if merit_f:
         output = merit_f(E)
     else:
-        output = default_eblt_merit(E)
+        output = default_belt_merit(E)
 
     if 'error' in output and output['error']:
         raise ValueError('run_impact_with_distgen returned error in output')
@@ -115,7 +115,7 @@ def evaluate_eblt_with_distgen(eblt_config: Union[str, Dict],
 
     G = Generator(distgen_input_file)
 
-    fingerprint = fingerprint_eblt_with_distgen(E, G)
+    fingerprint = fingerprint_belt_with_distgen(E, G)
     output['fingerprint'] = fingerprint
 
     if archive_path:
@@ -125,22 +125,22 @@ def evaluate_eblt_with_distgen(eblt_config: Union[str, Dict],
         output['archive'] = archive_file
 
         # Call the composite archive method
-        archive_eblt_with_distgen(E, G, archive_file=archive_file)
+        archive_belt_with_distgen(E, G, archive_file=archive_file)
 
     return output
 
 
-def fingerprint_eblt_with_distgen(eblt_object: EBLT, distgen_object: distgen):
+def fingerprint_belt_with_distgen(belt_object: BELT, distgen_object: distgen):
     """
     Calls fingerprint() of each of these objects
     """
-    f1 = eblt_object.fingerprint()
+    f1 = belt_object.fingerprint()
     f2 = distgen_object.fingerprint()
     d = {'f1': f1, 'f2': f2}
     return tools.fingerprint(d)
 
 
-def archive_eblt_with_distgen(eblt_object,
+def archive_belt_with_distgen(belt_object,
                                 distgen_object,
                                 archive_file=None,
                                 impact_group='impact',
@@ -160,6 +160,6 @@ def archive_eblt_with_distgen(eblt_object,
     distgen_object.archive(g)
 
     g = h5.create_group(impact_group)
-    eblt_object.archive(g)
+    belt_object.archive(g)
 
     h5.close()

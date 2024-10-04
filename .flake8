@@ -5,6 +5,6 @@ exclude =
     build,
     dist,
     versioneer.py,
-    eblt/_version.py
+    belt/_version.py
     .ipynb_checkpoints
 max-line-length = 115
