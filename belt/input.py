@@ -289,7 +289,7 @@ class ChangeEnergySpread(BaseModel):
 
     @classmethod
     def from_lattice_element(cls, lattice_element: LatticeElement):
-        return cls(energy_increment=lattice_element.V[0], name=lattice_element.name)
+        return cls(energy_spread_increment=lattice_element.V[0], name=lattice_element.name)
 
     def to_lattice_element(self) -> LatticeElement:
         return LatticeElement(

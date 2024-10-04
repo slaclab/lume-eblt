@@ -419,7 +419,7 @@ class BELT(CommandWrapper):
         # self.update_beam_radius(r, name)
 
         # write main input file
-        filename = os.path.join(path, 'belt.in')
+        filename = os.path.join(path, 'eblt.in')
         self.input.to_file(filename=filename)
 
         # write run script
